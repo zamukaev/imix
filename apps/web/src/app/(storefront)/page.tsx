@@ -1,52 +1,52 @@
-import type { HealthResponse } from '@imix/types';
-import { apiBaseUrl, apiFetch } from '@/lib/api';
+import type { Route } from 'next';
+import Link from 'next/link';
+import { ProductCard } from '@/components/product-card';
+import { getCategories, getProducts } from '@/lib/api';
 
-// The API is probed on every request, so the page must never be prerendered.
-export const dynamic = 'force-dynamic';
-
-async function getApiHealth(): Promise<HealthResponse | null> {
-  try {
-    return await apiFetch<HealthResponse>('/health');
-  } catch {
-    return null;
-  }
-}
+const FEATURED_LIMIT = 4;
 
 export default async function HomePage() {
-  const health = await getApiHealth();
+  const [categories, featured] = await Promise.all([
+    getCategories(),
+    getProducts({ featured: true, pageSize: FEATURED_LIMIT }),
+  ]);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-6 px-6">
-      <p className="text-ink-muted text-sm tracking-widest uppercase">Phase 1 · skeleton</p>
+    <main className="mx-auto max-w-6xl px-6">
+      <section className="py-24 sm:py-32">
+        <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-balance sm:text-7xl">
+          Phones and laptops,
+          <span className="text-ink-muted block">chosen well.</span>
+        </h1>
+        <p className="text-ink-muted mt-6 max-w-prose text-lg">
+          A short catalogue instead of an endless one. Every device here earns its place — and we
+          tell you what it is actually like to live with.
+        </p>
 
-      <h1 className="text-6xl font-semibold tracking-tight text-balance">
-        iMIX
-        <span className="text-ink-muted block">phones and laptops, chosen well.</span>
-      </h1>
+        <div className="mt-10 flex flex-wrap gap-3">
+          {categories.map((category) => (
+            <Link
+              key={category.id}
+              href={`/${category.slug}` as Route}
+              className="border-line hover:border-ink rounded-full border px-5 py-2 text-sm transition-colors"
+            >
+              {category.name}
+              <span className="text-ink-muted ml-2">{category.productCount}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
 
-      <p className="text-ink-muted max-w-prose">
-        The storefront is not built yet — this page exists to prove the pipeline. The catalog and
-        product pages arrive with Phase 1.4.
-      </p>
-
-      <dl className="rounded-card border-line bg-surface-alt border p-6 text-sm">
-        <div className="flex justify-between gap-4">
-          <dt className="text-ink-muted">API</dt>
-          <dd className="font-mono">{apiBaseUrl}</dd>
-        </div>
-        <div className="mt-2 flex justify-between gap-4">
-          <dt className="text-ink-muted">Status</dt>
-          <dd className={health ? 'text-success' : 'text-danger'}>
-            {health ? `${health.service} · ${health.status}` : 'unreachable'}
-          </dd>
-        </div>
-        <div className="mt-2 flex justify-between gap-4">
-          <dt className="text-ink-muted">Database</dt>
-          <dd className={health?.database === 'up' ? 'text-success' : 'text-danger'}>
-            {health?.database ?? 'unknown'}
-          </dd>
-        </div>
-      </dl>
+      {featured.items.length > 0 && (
+        <section className="pb-24">
+          <h2 className="mb-8 text-2xl font-medium tracking-tight">Featured</h2>
+          <div className="grid grid-cols-1 gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+            {featured.items.map((product, index) => (
+              <ProductCard key={product.id} product={product} priority={index === 0} />
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 }

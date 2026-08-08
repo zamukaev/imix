@@ -43,8 +43,8 @@ pnpm dev
 | API health probe | http://localhost:4000/health              |
 | Postgres         | localhost:5433 (`imix`/`imix`, db `imix`) |
 
-The home page shows the API's live health status and whether it can reach the
-database — a quick way to tell which piece is down.
+If the storefront comes up empty, check `curl localhost:4000/health` — it
+reports whether the API is running and whether it can reach the database.
 
 ## API
 
@@ -94,8 +94,9 @@ The connection URL is **not** in `schema.prisma` — Prisma 7 reads it from
 `apps/api/.env`.
 
 The seed loads two categories (`phones`, `laptops`) and four products with nine
-variants. Brands and devices are invented for iMIX; product imagery is referenced
-under `apps/web/public/products/` and arrives in Phase 4.
+variants. Brands and devices are invented for iMIX. Product imagery is
+self-authored placeholder SVG under `apps/web/public/products/`; real
+photography arrives in Phase 4.
 
 ## Scripts
 
@@ -127,7 +128,12 @@ a response shape fails compilation on whichever side has not been updated.
 
 ## Status
 
-Phase 1.3 complete: monorepo skeleton, Postgres with the schema from
-`ARCHITECTURE.md`, seeded catalogue, and the public read-only categories and
-products API. The storefront pages that consume it are Phase 1.4 — see the
-roadmap in `CLAUDE.md`.
+**Phase 1 complete.** The vertical slice runs end to end: Postgres → Prisma →
+NestJS → shared types → Next.js Server Components. Browse a category, click a
+product, pick a variant.
+
+Routes: `/` (home), `/[category]` (grid), `/product/[slug]` (detail). All
+prerendered at build time from `generateStaticParams`.
+
+Next is Phase 2 — cart, auth, checkout and Stripe. See the roadmap in
+`CLAUDE.md`.

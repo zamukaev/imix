@@ -87,9 +87,9 @@ pnpm build              # production build
 
 ## Roadmap (current phase marked ►)
 
-- ► **Phase 1 — Skeleton & vertical slice:** monorepo, DB schema, seed data,
-  catalog page + product detail page pulling from the real API. No 3D.
-- **Phase 2 — Commerce:** cart (Zustand), checkout, Stripe PaymentIntents + webhook, orders.
+- ~~**Phase 1 — Skeleton & vertical slice:** monorepo, DB schema, seed data,
+  catalog page + product detail page pulling from the real API. No 3D.~~ ✅
+- ► **Phase 2 — Commerce:** cart (Zustand), checkout, Stripe PaymentIntents + webhook, orders.
 - **Phase 3 — Admin:** protected `/admin`, product & category CRUD, order list.
 - **Phase 4 — Responsive & polish:** mobile layouts, loading/empty/error states, SEO, images.
 - **Phase 5 — 3D layer:** R3F product viewer on detail page, scroll-driven hero,

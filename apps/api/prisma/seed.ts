@@ -67,8 +67,8 @@ const productsByCategory: Record<string, ProductSeed[]> = {
       brand: 'Nuvo',
       basePrice: eur(1199),
       images: [
-        '/products/nuvo-aster-7-pro-1.jpg',
-        '/products/nuvo-aster-7-pro-2.jpg',
+        '/products/nuvo-aster-7-pro-1.svg',
+        '/products/nuvo-aster-7-pro-2.svg',
       ],
       featured: true,
       variants: [
@@ -105,7 +105,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
         'The same silicon as the Pro in a lighter 6.1" aluminium body. Dual camera, all-day battery, and the cleanest software update record in the range.',
       brand: 'Nuvo',
       basePrice: eur(899),
-      images: ['/products/nuvo-aster-7-1.jpg'],
+      images: ['/products/nuvo-aster-7-1.svg'],
       featured: false,
       variants: [
         {
@@ -136,8 +136,8 @@ const productsByCategory: Record<string, ProductSeed[]> = {
       brand: 'Lumen',
       basePrice: eur(1449),
       images: [
-        '/products/lumen-slate-14-1.jpg',
-        '/products/lumen-slate-14-2.jpg',
+        '/products/lumen-slate-14-1.svg',
+        '/products/lumen-slate-14-2.svg',
       ],
       featured: true,
       variants: [
@@ -166,7 +166,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
         'Sixteen inches of colour-accurate display with the thermal headroom to sustain it. For compiling, colour grading and anything else that pins every core.',
       brand: 'Lumen',
       basePrice: eur(2399),
-      images: ['/products/lumen-slate-16-pro-1.jpg'],
+      images: ['/products/lumen-slate-16-pro-1.svg'],
       featured: false,
       variants: [
         {
