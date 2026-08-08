@@ -45,7 +45,7 @@ model User {
 
 model Category {
   id       String    @id @default(cuid())
-  slug     String    @unique          // "iphone", "macbook"
+  slug     String    @unique          // "phones", "laptops"
   name     String
   products Product[]
 }
@@ -112,6 +112,12 @@ Notes:
   client; the server only creates an `Order` at checkout and re-computes totals
   from the DB (never from client-sent prices).
 - `priceAtPurchase` snapshots the price so history stays correct if prices change.
+- Category slugs are brand-neutral (`phones`, `laptops`) and manufacturers live in
+  `Product.brand`. iMIX is a multi-brand retailer with its own catalogue — it does
+  not trade on anyone else's trademarks (see the hard constraints in `CLAUDE.md`).
+- Prisma 7 keeps the connection URL out of `schema.prisma`: migrations read it
+  from `apps/api/prisma.config.ts`, the runtime client from the `pg` driver
+  adapter in `PrismaService`.
 
 ## 3. API surface (REST)
 

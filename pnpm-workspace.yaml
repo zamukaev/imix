@@ -2,9 +2,10 @@ packages:
   - "apps/*"
   - "packages/*"
 allowBuilds:
+  # prisma query engine binaries
+  '@prisma/engines': true
+  prisma: true
   # next/image optimisation
-  '@prisma/engines': set this to true or false
-  prisma: set this to true or false
   sharp: true
   # native resolver used by eslint-config-next
   unrs-resolver: true

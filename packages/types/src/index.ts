@@ -31,7 +31,8 @@ export type ApiError = {
 
 /** Response of `GET /health` — the end-to-end smoke test for the skeleton. */
 export type HealthResponse = {
-  status: 'ok';
+  status: 'ok' | 'degraded';
   service: string;
   uptime: number;
+  database: 'up' | 'down';
 };

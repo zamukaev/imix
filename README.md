@@ -20,7 +20,7 @@ for the system design.
   corepack enable pnpm --install-directory ~/.local/bin
   ```
 
-- **Docker** — for local Postgres, from Phase 1.2 onwards.
+- **Docker** — runs the local Postgres.
 
 ## Getting started
 
@@ -28,17 +28,52 @@ for the system design.
 pnpm install
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env.local
+
+docker compose up -d db              # Postgres on localhost:5433
+pnpm --filter api db:migrate         # apply migrations
+pnpm --filter api db:seed            # load demo catalogue
+
 pnpm dev
 ```
 
-| Service          | URL                          |
-| ---------------- | ---------------------------- |
-| Storefront       | http://localhost:3000        |
-| API              | http://localhost:4000        |
-| API health probe | http://localhost:4000/health |
+| Service          | URL                                       |
+| ---------------- | ----------------------------------------- |
+| Storefront       | http://localhost:3000                     |
+| API              | http://localhost:4000                     |
+| API health probe | http://localhost:4000/health              |
+| Postgres         | localhost:5433 (`imix`/`imix`, db `imix`) |
 
-The home page shows the API's live health status — if it reads `unreachable`,
-the API is not running or `NEXT_PUBLIC_API_URL` points somewhere else.
+The home page shows the API's live health status and whether it can reach the
+database — a quick way to tell which piece is down.
+
+## Database
+
+Postgres runs in Docker and is published on **5433**, not the usual 5432, so it
+never collides with a Postgres already installed on the host.
+
+```bash
+docker compose up -d db     # start
+docker compose down         # stop (keeps data)
+docker compose down -v      # stop and wipe the volume
+```
+
+Prisma lives in `apps/api`:
+
+```bash
+pnpm --filter api db:migrate   # create + apply a migration (prisma migrate dev)
+pnpm --filter api db:seed      # run prisma/seed.ts — idempotent, safe to repeat
+pnpm --filter api db:reset     # drop, re-migrate, re-seed
+pnpm --filter api db:studio    # browse the data
+```
+
+The connection URL is **not** in `schema.prisma` — Prisma 7 reads it from
+`apps/api/prisma.config.ts` for migrations, and `PrismaService` passes it to the
+`pg` driver adapter at runtime. Both take it from `DATABASE_URL` in
+`apps/api/.env`.
+
+The seed loads two categories (`phones`, `laptops`) and four products with nine
+variants. Brands and devices are invented for iMIX; product imagery is referenced
+under `apps/web/public/products/` and arrives in Phase 4.
 
 ## Scripts
 
@@ -50,7 +85,7 @@ pnpm build              # production build of every workspace
 pnpm typecheck          # tsc --noEmit across workspaces
 pnpm lint               # eslint across workspaces
 pnpm format             # prettier write
-pnpm --filter api test  # API tests (jest + supertest)
+pnpm --filter api test  # API tests (jest + supertest) — needs the database up
 ```
 
 ## Layout
@@ -59,6 +94,7 @@ pnpm --filter api test  # API tests (jest + supertest)
 apps/
   web/       Next.js 15 storefront (App Router) — /admin route group lands in Phase 3
   api/       NestJS 11 REST API
+    prisma/  schema, migrations and seed data
 packages/
   types/     @imix/types — the single source of truth for the API contract
   config/    @imix/config — shared tsconfig / eslint presets and Tailwind tokens
@@ -69,6 +105,7 @@ a response shape fails compilation on whichever side has not been updated.
 
 ## Status
 
-Phase 1.1 complete: the monorepo skeleton runs end to end (`/health` → shared
-types → storefront). Database, seed data and the product API arrive in
-Phase 1.2–1.3 — see the roadmap in `CLAUDE.md`.
+Phase 1.2 complete: monorepo skeleton, Postgres, the full schema from
+`ARCHITECTURE.md`, first migration and seeded demo catalogue. `/health` reports
+the database as `up`. The public products API is Phase 1.3 — see the roadmap in
+`CLAUDE.md`.
