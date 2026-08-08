@@ -1,6 +1,6 @@
 # iMIX
 
-E-commerce store for phones and MacBooks — an original brand, not an Apple clone.
+E-commerce store for phones and laptops — an original brand, not an Apple clone.
 See [`CLAUDE.md`](./CLAUDE.md) for conventions and [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 for the system design.
 
@@ -45,6 +45,28 @@ pnpm dev
 
 The home page shows the API's live health status and whether it can reach the
 database — a quick way to tell which piece is down.
+
+## API
+
+Public, read-only for now. Response types live in `packages/types` and are
+imported by both the controllers and the storefront.
+
+| Endpoint              | Notes                                                    |
+| --------------------- | -------------------------------------------------------- |
+| `GET /health`         | service + database probe                                 |
+| `GET /categories`     | all categories with their product counts                 |
+| `GET /products`       | `?category=<slug>&featured=<bool>&page=<n>&pageSize=<n>` |
+| `GET /products/:slug` | full product with variants; 404 when unknown             |
+
+`GET /products` returns a `Paginated<ProductListItemDto>` envelope
+(`{ items, page, pageSize, total }`), defaults to page 1 × 12 and caps
+`pageSize` at 60. Query parameters are validated: unknown parameters and
+out-of-range values are rejected with 400 rather than ignored.
+
+```bash
+curl 'localhost:4000/products?category=phones&featured=true'
+curl localhost:4000/products/nuvo-aster-7-pro
+```
 
 ## Database
 
@@ -105,7 +127,7 @@ a response shape fails compilation on whichever side has not been updated.
 
 ## Status
 
-Phase 1.2 complete: monorepo skeleton, Postgres, the full schema from
-`ARCHITECTURE.md`, first migration and seeded demo catalogue. `/health` reports
-the database as `up`. The public products API is Phase 1.3 — see the roadmap in
-`CLAUDE.md`.
+Phase 1.3 complete: monorepo skeleton, Postgres with the schema from
+`ARCHITECTURE.md`, seeded catalogue, and the public read-only categories and
+products API. The storefront pages that consume it are Phase 1.4 — see the
+roadmap in `CLAUDE.md`.
