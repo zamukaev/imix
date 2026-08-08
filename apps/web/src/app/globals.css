@@ -1,0 +1,10 @@
+@import 'tailwindcss';
+@import '@imix/config/tailwind/tokens.css';
+
+@layer base {
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+  }
+}

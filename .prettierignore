@@ -1,0 +1,11 @@
+node_modules
+.next
+dist
+.turbo
+coverage
+pnpm-lock.yaml
+
+# hand-authored project docs — keep their formatting as written
+CLAUDE.md
+ARCHITECTURE.md
+PROMTS.md

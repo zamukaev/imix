@@ -1,0 +1,35 @@
+/**
+ * iMIX shared design tokens (Tailwind v4, CSS-first config).
+ *
+ * Import AFTER `@import "tailwindcss"` in an app's global stylesheet.
+ * Placeholder scale — the real visual identity lands in Phase 4.
+ */
+
+@theme {
+  /* Neutrals — the storefront is mostly surface and type. */
+  --color-ink: #0b0b0f;
+  --color-ink-muted: #6b6b76;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f5f5f7;
+  --color-line: #e3e3e8;
+
+  /* Brand accent */
+  --color-brand: #3d5afe;
+  --color-brand-strong: #2438d6;
+
+  /* Feedback */
+  --color-danger: #d93025;
+  --color-success: #1e8e3e;
+
+  /* Type scale — large, airy headings per the iMIX brief. */
+  --text-display: 4.5rem;
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.03em;
+  --text-headline: 2.5rem;
+  --text-headline--line-height: 1.15;
+  --text-headline--letter-spacing: -0.02em;
+
+  /* Layout rhythm */
+  --spacing-section: 6rem;
+  --radius-card: 1.25rem;
+}

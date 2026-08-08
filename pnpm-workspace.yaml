@@ -1,0 +1,10 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+allowBuilds:
+  # next/image optimisation
+  '@prisma/engines': set this to true or false
+  prisma: set this to true or false
+  sharp: true
+  # native resolver used by eslint-config-next
+  unrs-resolver: true

@@ -1,0 +1,12 @@
+{
+  "extends": "@imix/config/tsconfig/base.json",
+  "compilerOptions": {
+    // CommonJS output so the NestJS API can consume it without ESM interop,
+    // while Next.js reads the same package through its `exports` map.
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "rootDir": "./src",
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*.ts"]
+}

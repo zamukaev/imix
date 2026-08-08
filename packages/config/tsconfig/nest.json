@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "iMIX NestJS",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "isolatedModules": false,
+    "removeComments": true,
+    // Deliberately NOT incremental: `nest build` deletes outDir, and a stale
+    // .tsbuildinfo would then make tsc skip emit and leave dist/ empty.
+    "incremental": false,
+    // NestJS injects dependencies after construction, so definite-assignment
+    // on injected properties would otherwise need `!` on every field.
+    "strictPropertyInitialization": false
+  }
+}
