@@ -7,13 +7,15 @@
     "build": "next build --turbopack",
     "start": "next start --port 3000",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@imix/types": "workspace:*",
     "next": "15.5.23",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@imix/config": "workspace:*",
@@ -23,6 +25,7 @@
     "@types/react-dom": "^19.2.4",
     "eslint": "^9.39.5",
     "tailwindcss": "^4.3.3",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
   }
 }

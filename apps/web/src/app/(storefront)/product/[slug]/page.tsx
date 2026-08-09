@@ -67,7 +67,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
           <p className="text-ink-muted max-w-prose leading-relaxed">{product.description}</p>
 
-          <ProductPurchasePanel variants={product.variants} />
+          <ProductPurchasePanel
+            productSlug={product.slug}
+            productName={product.name}
+            brand={product.brand}
+            image={product.images[0] ?? null}
+            variants={product.variants}
+          />
         </div>
       </div>
     </main>

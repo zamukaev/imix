@@ -1,5 +1,6 @@
 import type { Route } from 'next';
 import Link from 'next/link';
+import { CartLink } from '@/components/cart-link';
 import { getCategories } from '@/lib/api';
 
 /**
@@ -17,7 +18,7 @@ export async function SiteHeader() {
           iMIX
         </Link>
 
-        <ul className="flex items-center gap-6 text-sm">
+        <ul className="flex flex-1 items-center gap-6 text-sm">
           {categories.map((category) => (
             <li key={category.id}>
               <Link
@@ -29,6 +30,8 @@ export async function SiteHeader() {
             </li>
           ))}
         </ul>
+
+        <CartLink />
       </nav>
     </header>
   );

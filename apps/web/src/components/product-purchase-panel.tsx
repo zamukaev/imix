@@ -3,25 +3,56 @@
 import { useState } from 'react';
 import type { ProductVariantDto } from '@imix/types';
 import { formatMoney } from '@/lib/format';
+import { useCartStore } from '@/stores/cart-store';
 
 const LOW_STOCK_THRESHOLD = 5;
+/** How long the "Added" confirmation stays up before the button resets. */
+const ADDED_CONFIRMATION_MS = 1500;
 
 type ProductPurchasePanelProps = {
+  productSlug: string;
+  productName: string;
+  brand: string;
+  image: string | null;
   variants: ProductVariantDto[];
 };
 
 /**
  * The only interactive part of the detail page, so the client boundary stops
  * here rather than wrapping the whole route.
- *
- * "Add to cart" is intentionally inert — the cart is Phase 2.
  */
-export function ProductPurchasePanel({ variants }: ProductPurchasePanelProps) {
+export function ProductPurchasePanel({
+  productSlug,
+  productName,
+  brand,
+  image,
+  variants,
+}: ProductPurchasePanelProps) {
   const [selectedId, setSelectedId] = useState(variants[0]?.id ?? '');
+  const [justAdded, setJustAdded] = useState(false);
+  const addItem = useCartStore((state) => state.addItem);
   const selected = variants.find((variant) => variant.id === selectedId) ?? variants[0];
 
   if (!selected) {
     return <p className="text-ink-muted">Currently unavailable.</p>;
+  }
+
+  function handleAddToCart() {
+    if (!selected) return;
+
+    addItem({
+      variantId: selected.id,
+      productSlug,
+      productName,
+      brand,
+      variantLabel: selected.label,
+      unitPrice: selected.price,
+      image,
+      stock: selected.stock,
+    });
+
+    setJustAdded(true);
+    setTimeout(() => setJustAdded(false), ADDED_CONFIRMATION_MS);
   }
 
   return (
@@ -69,11 +100,11 @@ export function ProductPurchasePanel({ variants }: ProductPurchasePanelProps) {
       <div className="space-y-3">
         <button
           type="button"
-          disabled
-          title="The cart arrives in Phase 2"
-          className="bg-ink text-surface w-full rounded-full px-6 py-3 text-sm font-medium disabled:opacity-40"
+          onClick={handleAddToCart}
+          disabled={selected.stock === 0}
+          className="bg-ink text-surface w-full rounded-full px-6 py-3 text-sm font-medium transition-opacity disabled:opacity-40"
         >
-          Add to cart
+          {justAdded ? 'Added' : 'Add to cart'}
         </button>
 
         <p aria-live="polite" className="text-ink-muted text-center text-xs">
