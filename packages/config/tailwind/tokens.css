@@ -2,7 +2,11 @@
  * iMIX shared design tokens (Tailwind v4, CSS-first config).
  *
  * Import AFTER `@import "tailwindcss"` in an app's global stylesheet.
- * Placeholder scale — the real visual identity lands in Phase 4.
+ *
+ * This is the single source of every size, colour, radius and spacing step —
+ * see ARCHITECTURE.md §5 "Design language" for what the scale is trying to do
+ * and why the display sizes are tracked negative. A component that needs a value
+ * that is not here adds a token; it does not inline one.
  */
 
 @theme {
@@ -11,25 +15,118 @@
   --color-ink-muted: #6b6b76;
   --color-surface: #ffffff;
   --color-surface-alt: #f5f5f7;
+  --color-surface-dark: #000000;
   --color-line: #e3e3e8;
 
-  /* Brand accent */
-  --color-brand: #3d5afe;
-  --color-brand-strong: #2438d6;
+  /*
+   * Muted text and hairlines as they have to be re-stated on a dark tile.
+   * `--color-ink-muted` only clears AA against light surfaces.
+   */
+  --color-ink-muted-on-dark: #a1a1aa;
+  --color-line-on-dark: #3a3a40;
+
+  /*
+   * The one accent. Deliberately not the reference's blue — a shop that borrows
+   * a manufacturer's signature colour reads as that manufacturer.
+   *
+   * Two values because one cannot serve both grounds: teal-700 is 5.5:1 on
+   * white and 5.0:1 on the alt surface, but only 3.8:1 on black. The lighter
+   * pairing clears 11:1 there.
+   */
+  --color-brand: #0f766e;
+  --color-brand-strong: #115e59;
+  --color-brand-on-dark: #2dd4bf;
 
   /* Feedback */
   --color-danger: #d93025;
   --color-success: #1e8e3e;
 
-  /* Type scale — large, airy headings per the iMIX brief. */
+  /*
+   * Inter carries Cyrillic and Latin in one family, which is the hard
+   * requirement: the shop's primary language is Russian and headline type must
+   * not fall back to a second face mid-word. Wired up with `next/font` in the
+   * web app, which sets `--font-inter`.
+   */
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    sans-serif;
+
+  /*
+   * Type scale. Display sizes get tighter leading and negative tracking as they
+   * grow; the subhead deliberately inverts that with positive tracking, which is
+   * the contrast that carries the whole look.
+   */
   --text-display: 4.5rem;
   --text-display--line-height: 1.05;
   --text-display--letter-spacing: -0.03em;
   --text-headline: 2.5rem;
-  --text-headline--line-height: 1.15;
+  --text-headline--line-height: 1.1;
   --text-headline--letter-spacing: -0.02em;
+  --text-subhead: 1.75rem;
+  --text-subhead--line-height: 1.15;
+  --text-subhead--letter-spacing: 0.007em;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.35;
+  --text-caption--letter-spacing: 0.06em;
+  /* Buttons and nav. A notch above body text so a pill never looks cramped. */
+  --text-control: 1.0625rem;
+  --text-control--line-height: 1.2;
 
   /* Layout rhythm */
   --spacing-section: 6rem;
+  /* The hairline of page background that separates two stacked tiles. */
+  --spacing-gutter: 0.25rem;
+  /*
+   * Tile heights. Short of a full viewport on purpose: a sliver of the next
+   * tile stays visible, which is what tells the visitor the page continues.
+   * `svh` rather than `vh` so mobile browser chrome does not clip the CTAs.
+   *
+   * The `max()` floor is the important half. The artwork reserves its top ~39 %
+   * for the copy (§5.1), but that is a *proportion* while a headline plus a
+   * subhead plus a row of pills is an absolute height. On a short, wide viewport
+   * the proportion shrinks below what the copy needs and the buttons land on the
+   * device. The floor keeps the tile tall enough for the copy to stay inside its
+   * band; below it the tile simply outgrows the viewport, which is fine — the
+   * page scrolls.
+   */
+  --spacing-tile: max(88svh, 48rem);
+  --spacing-tile-half: max(62svh, 42rem);
   --radius-card: 1.25rem;
+  /* Buttons are pills: larger than any height they can reach. */
+  --radius-pill: 980px;
+
+  /*
+   * Measure for a tile headline. Display type needs a hard ceiling or a long
+   * Russian product name sets one word per line at 4.5rem.
+   */
+  --container-headline: 18ch;
+}
+
+/**
+ * Surface contract.
+ *
+ * A tile decides what "foreground" means for everything inside it, so controls
+ * do not need to know which ground they were dropped on. `Button`, links and
+ * hairlines read these; `Tile` re-points them per surface.
+ *
+ * Defaults are the light case, so a control outside any tile still works.
+ */
+:root {
+  --surface-ink: var(--color-ink);
+  --surface-ink-muted: var(--color-ink-muted);
+  --surface-line: var(--color-line);
+  --surface-accent: var(--color-brand);
+  /* Filled control: ink pill on light ground. */
+  --surface-solid-bg: var(--color-ink);
+  --surface-solid-ink: var(--color-surface);
+}
+
+.surface-dark {
+  --surface-ink: var(--color-surface);
+  --surface-ink-muted: var(--color-ink-muted-on-dark);
+  --surface-line: var(--color-line-on-dark);
+  --surface-accent: var(--color-brand-on-dark);
+  /* Inverted: the pill becomes light so it still reads as the filled one. */
+  --surface-solid-bg: var(--color-surface);
+  --surface-solid-ink: var(--color-ink);
 }

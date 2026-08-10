@@ -1,10 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type {
-  Paginated,
-  ProductDetailDto,
-  ProductListItemDto,
+import {
+  DEFAULT_CURRENCY,
+  DEFAULT_LOCALE,
+  type Currency,
+  type Locale,
+  type Paginated,
+  type ProductDetailDto,
+  type ProductListItemDto,
+  type ProductVariantDto,
 } from '@imix/types';
 import { Prisma } from '@prisma/client';
+import { amount, priceColumn, text } from '../common/localisation';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   DEFAULT_PAGE,
@@ -12,19 +18,43 @@ import {
   FindProductsQueryDto,
 } from './dto/find-products-query.dto';
 
-/** Columns a catalogue grid needs — deliberately not `description`. */
+/**
+ * Columns a catalogue grid needs — deliberately not the descriptions.
+ *
+ * Both translations and both prices are selected and one of each is chosen in
+ * the mappers below. The alternative, building the column list per request,
+ * would trade a few bytes on the wire for a `Prisma.ProductSelect` that no
+ * longer type-checks.
+ */
 const listSelect = {
   id: true,
   slug: true,
-  name: true,
+  nameRu: true,
+  nameEn: true,
   brand: true,
-  basePrice: true,
+  basePriceRub: true,
+  basePriceUsd: true,
   images: true,
   featured: true,
-  category: { select: { slug: true, name: true } },
+  category: { select: { slug: true, nameRu: true, nameEn: true } },
 } satisfies Prisma.ProductSelect;
 
+const variantSelect = {
+  id: true,
+  sku: true,
+  labelRu: true,
+  labelEn: true,
+  color: true,
+  config: true,
+  priceRub: true,
+  priceUsd: true,
+  stock: true,
+} satisfies Prisma.ProductVariantSelect;
+
 type ProductListRow = Prisma.ProductGetPayload<{ select: typeof listSelect }>;
+type ProductVariantRow = Prisma.ProductVariantGetPayload<{
+  select: typeof variantSelect;
+}>;
 
 @Injectable()
 export class ProductsService {
@@ -35,6 +65,8 @@ export class ProductsService {
   ): Promise<Paginated<ProductListItemDto>> {
     const page = query.page ?? DEFAULT_PAGE;
     const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE;
+    const locale = query.locale ?? DEFAULT_LOCALE;
+    const currency = query.currency ?? DEFAULT_CURRENCY;
 
     const where: Prisma.ProductWhereInput = {
       ...(query.category ? { category: { slug: query.category } } : {}),
@@ -52,27 +84,31 @@ export class ProductsService {
       this.prisma.product.count({ where }),
     ]);
 
-    return { items: items.map(toListItem), page, pageSize, total };
+    return {
+      items: items.map((item) => toListItem(item, locale, currency)),
+      page,
+      pageSize,
+      total,
+    };
   }
 
-  async findBySlug(slug: string): Promise<ProductDetailDto> {
+  async findBySlug(
+    slug: string,
+    locale: Locale = DEFAULT_LOCALE,
+    currency: Currency = DEFAULT_CURRENCY,
+  ): Promise<ProductDetailDto> {
     const product = await this.prisma.product.findUnique({
       where: { slug },
       select: {
         ...listSelect,
-        description: true,
+        descriptionRu: true,
+        descriptionEn: true,
         model3dUrl: true,
         variants: {
-          select: {
-            id: true,
-            sku: true,
-            label: true,
-            color: true,
-            config: true,
-            price: true,
-            stock: true,
-          },
-          orderBy: { price: 'asc' },
+          select: variantSelect,
+          // Cheapest first *in the currency being shown* — the two price lists
+          // are set by hand and need not rank variants identically.
+          orderBy: { [priceColumn(currency)]: 'asc' },
         },
       },
     });
@@ -82,27 +118,59 @@ export class ProductsService {
     }
 
     return {
-      ...toListItem(product),
-      description: product.description,
+      ...toListItem(product, locale, currency),
+      description: text(locale, {
+        ru: product.descriptionRu,
+        en: product.descriptionEn,
+      }),
       model3dUrl: product.model3dUrl,
-      variants: product.variants,
+      variants: product.variants.map((variant) =>
+        toVariant(variant, locale, currency),
+      ),
     };
   }
 }
 
 /** Maps a Prisma row onto the public DTO so DB columns never leak by accident. */
-function toListItem(product: ProductListRow): ProductListItemDto {
+function toListItem(
+  product: ProductListRow,
+  locale: Locale,
+  currency: Currency,
+): ProductListItemDto {
   return {
     id: product.id,
     slug: product.slug,
-    name: product.name,
+    name: text(locale, { ru: product.nameRu, en: product.nameEn }),
     brand: product.brand,
-    basePrice: product.basePrice,
+    basePrice: amount(currency, {
+      RUB: product.basePriceRub,
+      USD: product.basePriceUsd,
+    }),
+    currency,
     images: product.images,
     featured: product.featured,
     category: {
       slug: product.category.slug,
-      name: product.category.name,
+      name: text(locale, {
+        ru: product.category.nameRu,
+        en: product.category.nameEn,
+      }),
     },
+  };
+}
+
+function toVariant(
+  variant: ProductVariantRow,
+  locale: Locale,
+  currency: Currency,
+): ProductVariantDto {
+  return {
+    id: variant.id,
+    sku: variant.sku,
+    label: text(locale, { ru: variant.labelRu, en: variant.labelEn }),
+    color: variant.color,
+    config: variant.config,
+    price: amount(currency, { RUB: variant.priceRub, USD: variant.priceUsd }),
+    stock: variant.stock,
   };
 }

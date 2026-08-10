@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import type { ProductVariantDto } from '@imix/types';
-import { formatMoney } from '@/lib/format';
+import { useLocale, useTranslations } from 'next-intl';
+import type { Currency, ProductVariantDto } from '@imix/types';
+import { useMoney } from '@/components/currency-provider';
+import { Button } from '@/components/ui/button';
 import { useCartStore } from '@/stores/cart-store';
 
 const LOW_STOCK_THRESHOLD = 5;
@@ -13,6 +15,12 @@ type ProductPurchasePanelProps = {
   productSlug: string;
   productName: string;
   brand: string;
+  /**
+   * The currency the API priced these variants in. Stored on the cart line
+   * along with the active locale, so the cart knows what its copies are copies
+   * *of* and can be re-fetched when either changes.
+   */
+  currency: Currency;
   image: string | null;
   variants: ProductVariantDto[];
 };
@@ -25,16 +33,20 @@ export function ProductPurchasePanel({
   productSlug,
   productName,
   brand,
+  currency,
   image,
   variants,
 }: ProductPurchasePanelProps) {
+  const t = useTranslations('product');
+  const locale = useLocale();
+  const money = useMoney();
   const [selectedId, setSelectedId] = useState(variants[0]?.id ?? '');
   const [justAdded, setJustAdded] = useState(false);
   const addItem = useCartStore((state) => state.addItem);
   const selected = variants.find((variant) => variant.id === selectedId) ?? variants[0];
 
   if (!selected) {
-    return <p className="text-ink-muted">Currently unavailable.</p>;
+    return <p className="text-ink-muted">{t('unavailable')}</p>;
   }
 
   function handleAddToCart() {
@@ -47,6 +59,8 @@ export function ProductPurchasePanel({
       brand,
       variantLabel: selected.label,
       unitPrice: selected.price,
+      currency,
+      locale,
       image,
       stock: selected.stock,
     });
@@ -57,11 +71,11 @@ export function ProductPurchasePanel({
 
   return (
     <div className="space-y-8">
-      <p className="text-3xl font-medium tracking-tight">{formatMoney(selected.price)}</p>
+      <p className="text-3xl font-medium tracking-tight">{money(selected.price)}</p>
 
       <fieldset>
         <legend className="text-ink-muted mb-3 text-xs tracking-widest uppercase">
-          Configuration
+          {t('configuration')}
         </legend>
 
         <div className="grid gap-2">
@@ -90,7 +104,7 @@ export function ProductPurchasePanel({
                   />
                   {variant.label}
                 </span>
-                <span className="text-ink-muted">{formatMoney(variant.price)}</span>
+                <span className="text-ink-muted">{money(variant.price)}</span>
               </label>
             );
           })}
@@ -98,21 +112,16 @@ export function ProductPurchasePanel({
       </fieldset>
 
       <div className="space-y-3">
-        <button
-          type="button"
-          onClick={handleAddToCart}
-          disabled={selected.stock === 0}
-          className="bg-ink text-surface w-full rounded-full px-6 py-3 text-sm font-medium transition-opacity disabled:opacity-40"
-        >
-          {justAdded ? 'Added' : 'Add to cart'}
-        </button>
+        <Button onClick={handleAddToCart} disabled={selected.stock === 0} fullWidth>
+          {justAdded ? t('added') : t('addToCart')}
+        </Button>
 
         <p aria-live="polite" className="text-ink-muted text-center text-xs">
           {selected.stock === 0
-            ? 'Sold out'
+            ? t('soldOut')
             : selected.stock <= LOW_STOCK_THRESHOLD
-              ? `Only ${selected.stock} left`
-              : 'In stock'}
+              ? t('lowStock', { count: selected.stock })
+              : t('inStock')}
         </p>
       </div>
     </div>

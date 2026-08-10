@@ -1,6 +1,7 @@
 'use client';
 
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import { useCartItemCount } from '@/stores/cart-store';
 
 /**
@@ -10,6 +11,7 @@ import { useCartItemCount } from '@/stores/cart-store';
  * cart loads, which is an acceptable flash for a count badge.
  */
 export function CartLink() {
+  const t = useTranslations('nav');
   const itemCount = useCartItemCount();
 
   return (
@@ -17,9 +19,12 @@ export function CartLink() {
       href="/cart"
       className="text-ink-muted hover:text-ink flex items-center gap-1.5 text-sm transition-colors"
     >
-      Cart
+      {t('cart')}
       {itemCount > 0 && (
-        <span className="bg-ink text-surface inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-medium">
+        <span
+          aria-label={t('cartItems', { count: itemCount })}
+          className="bg-ink text-surface inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-medium"
+        >
           {itemCount}
         </span>
       )}

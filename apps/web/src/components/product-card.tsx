@@ -1,7 +1,8 @@
 import type { Route } from 'next';
-import Link from 'next/link';
+import { getLocale, getTranslations } from 'next-intl/server';
 import type { ProductListItemDto } from '@imix/types';
-import { formatPriceFrom } from '@/lib/format';
+import { Link } from '@/i18n/navigation';
+import { formatMoney } from '@/lib/format';
 
 type ProductCardProps = {
   product: ProductListItemDto;
@@ -9,7 +10,8 @@ type ProductCardProps = {
   priority?: boolean;
 };
 
-export function ProductCard({ product, priority = false }: ProductCardProps) {
+export async function ProductCard({ product, priority = false }: ProductCardProps) {
+  const [locale, t] = await Promise.all([getLocale(), getTranslations('product')]);
   const [image] = product.images;
 
   return (
@@ -35,7 +37,13 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         <div className="mt-4 space-y-1">
           <p className="text-ink-muted text-xs tracking-widest uppercase">{product.brand}</p>
           <h3 className="text-lg font-medium tracking-tight">{product.name}</h3>
-          <p className="text-ink-muted text-sm">{formatPriceFrom(product.basePrice)}</p>
+          {/* The card advertises the cheapest variant, in the currency the API
+              priced this response in. */}
+          <p className="text-ink-muted text-sm">
+            {t('priceFrom', {
+              price: formatMoney(product.basePrice, locale, product.currency),
+            })}
+          </p>
         </div>
       </Link>
     </article>

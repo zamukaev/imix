@@ -1,10 +1,16 @@
-import type { Money } from './common';
+import type { Currency, Money, PricedQuery } from './common';
 
-/** A buyable configuration of a product. */
+/**
+ * A buyable configuration of a product.
+ *
+ * `label` and `price` are already resolved to the locale and currency the
+ * request asked for; the currency they were resolved in is on the enclosing
+ * product.
+ */
 export type ProductVariantDto = {
   id: string;
   sku: string;
-  /** Human-readable summary, e.g. "256 GB · Graphite". */
+  /** Human-readable summary, e.g. "256 ГБ · Графит". */
   label: string;
   color: string | null;
   config: string | null;
@@ -27,8 +33,11 @@ export type ProductListItemDto = {
   id: string;
   slug: string;
   name: string;
+  /** Manufacturer name — not translated, brands read the same in both locales. */
   brand: string;
   basePrice: Money;
+  /** Which currency `basePrice` (and every variant price) is quoted in. */
+  currency: Currency;
   images: string[];
   featured: boolean;
   category: ProductCategoryDto;
@@ -43,7 +52,7 @@ export type ProductDetailDto = ProductListItemDto & {
 };
 
 /** Accepted query string of `GET /products`. */
-export type ProductListQuery = {
+export type ProductListQuery = PricedQuery & {
   category?: string;
   featured?: boolean;
   page?: number;

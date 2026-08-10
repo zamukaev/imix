@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 type ProductGalleryProps = {
   images: string[];
@@ -10,6 +11,7 @@ type ProductGalleryProps = {
 /** Image gallery with thumbnail selection. The 3D viewer replaces this on
  * products that have a model in Phase 5. */
 export function ProductGallery({ images, productName }: ProductGalleryProps) {
+  const t = useTranslations('product');
   const [activeIndex, setActiveIndex] = useState(0);
   const active = images[activeIndex];
 
@@ -24,7 +26,11 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={active}
-          alt={`${productName} — view ${activeIndex + 1} of ${images.length}`}
+          alt={t('galleryAlt', {
+            product: productName,
+            index: activeIndex + 1,
+            total: images.length,
+          })}
           width={800}
           height={800}
           className="h-full w-full object-cover"
@@ -38,7 +44,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
               <button
                 type="button"
                 onClick={() => setActiveIndex(index)}
-                aria-label={`Show view ${index + 1}`}
+                aria-label={t('showView', { index: index + 1 })}
                 aria-current={index === activeIndex}
                 className={[
                   'rounded-xl bg-surface-alt size-20 overflow-hidden border transition-colors',

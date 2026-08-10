@@ -36,9 +36,20 @@ describe('GET /categories', () => {
     expect(phones).toEqual({
       id: expect.any(String),
       slug: 'phones',
-      name: 'Phones',
+      name: 'Смартфоны',
       productCount: expect.any(Number),
     });
     expect(phones.productCount).toBeGreaterThan(0);
+  });
+
+  it('names the categories in English when asked to', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/categories?locale=en')
+      .expect(200);
+
+    const phones = response.body.find(
+      (category: { slug: string }) => category.slug === 'phones',
+    );
+    expect(phones.name).toBe('Smartphones');
   });
 });

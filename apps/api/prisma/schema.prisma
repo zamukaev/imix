@@ -1,5 +1,13 @@
 // iMIX data model — mirrors ARCHITECTURE.md §2 "Data model".
-// Money is always stored in integer minor units (cents), never as a float.
+//
+// Two cross-cutting rules shape the columns below:
+//
+//  1. Money is always stored in integer minor units (копейки / cents), never as
+//     a float, and always *per currency*. There is no exchange rate anywhere in
+//     this schema: the merchant sets the RUB price and the USD price, and a
+//     buyer is charged exactly one of them.
+//  2. Shopper-facing text is stored once per locale (`…Ru` / `…En`). The API
+//     resolves one of them per request, so a DTO only ever carries one language.
 
 generator client {
   provider = "prisma-client-js"
@@ -24,6 +32,26 @@ enum OrderStatus {
   CANCELLED
 }
 
+/// The currencies the shop quotes and settles in. Mirrors `Currency` in
+/// @imix/types — adding a member here means adding a price column too.
+enum Currency {
+  RUB
+  USD
+}
+
+/// Ground a home tile is drawn on. Mirrors `TileSurface` in the web primitive.
+enum TileSurface {
+  LIGHT
+  WHITE
+  DARK
+}
+
+/// Full-bleed tile, or one half of a pair. See ARCHITECTURE.md §5.1.
+enum TileWidth {
+  FULL
+  HALF
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -36,25 +64,31 @@ model User {
 
 model Category {
   id       String    @id @default(cuid())
-  slug     String    @unique // "iphone", "macbook"
-  name     String
+  slug     String    @unique // "iphone", "macbook" — locale-independent
+  nameRu   String // "iPhone", "Ноутбуки"
+  nameEn   String // "iPhone", "Laptops"
   products Product[]
 }
 
 model Product {
-  id          String           @id @default(cuid())
-  slug        String           @unique
-  name        String
-  description String
-  brand       String
-  categoryId  String
-  category    Category         @relation(fields: [categoryId], references: [id])
-  basePrice   Int // minor units (cents)
-  images      String[]
-  model3dUrl  String? // .glb for R3F viewer (Phase 5)
-  featured    Boolean          @default(false)
-  variants    ProductVariant[]
-  createdAt   DateTime         @default(now())
+  id            String           @id @default(cuid())
+  slug          String           @unique
+  nameRu        String
+  nameEn        String
+  descriptionRu String
+  descriptionEn String
+  brand         String // "Apple" — a brand name is not translated
+  categoryId    String
+  category      Category         @relation(fields: [categoryId], references: [id])
+  // Cheapest variant, denormalised for the catalogue grid. One column per
+  // currency: see the header note — no rate, no conversion.
+  basePriceRub  Int // minor units (копейки)
+  basePriceUsd  Int // minor units (cents)
+  images        String[]
+  model3dUrl    String? // .glb for R3F viewer (Phase 5)
+  featured      Boolean          @default(false)
+  variants      ProductVariant[]
+  createdAt     DateTime         @default(now())
 }
 
 model ProductVariant {
@@ -62,20 +96,28 @@ model ProductVariant {
   productId  String
   product    Product     @relation(fields: [productId], references: [id])
   sku        String      @unique
-  label      String // "256GB · Space Black"
+  labelRu    String // "256 ГБ · Чёрный титан"
+  labelEn    String // "256GB · Black Titanium"
   color      String?
   config     String? // storage / RAM etc.
-  price      Int // minor units
+  priceRub   Int // minor units (копейки)
+  priceUsd   Int // minor units (cents)
   stock      Int         @default(0)
   orderItems OrderItem[]
 }
 
 model Order {
   id                    String      @id @default(cuid())
-  userId                String
-  user                  User        @relation(fields: [userId], references: [id])
+  // Null for a guest checkout. Accounts arrive with auth in Phase 3; an order
+  // placed before then keeps `email` as its only owner reference.
+  userId                String?
+  user                  User?       @relation(fields: [userId], references: [id])
+  email                 String
   status                OrderStatus @default(PENDING)
   total                 Int
+  // Frozen at checkout alongside `total` and every `priceAtPurchase`. What was
+  // charged must stay readable even after the shopper switches currency.
+  currency              Currency    @default(RUB)
   stripePaymentIntentId String?     @unique
   shippingName          String
   shippingAddress       String
@@ -94,4 +136,53 @@ model OrderItem {
   variant         ProductVariant @relation(fields: [variantId], references: [id])
   quantity        Int
   priceAtPurchase Int // snapshot; never trust current price
+}
+
+/// One tile on the home page.
+///
+/// The shop window is content, not code: the admin owns this list so a seasonal
+/// rearrangement does not need a deploy. The storefront renders it in order and
+/// derives pairs from `width` — see the notes in ARCHITECTURE.md §2.
+model HomeTile {
+  id        String      @id @default(cuid())
+  /// A stable, human-readable handle — "hero-iphone", "promo-watch".
+  ///
+  /// Independent of order on purpose: the seed and any future migration need a
+  /// way to name one tile that does not change the moment somebody drags it up
+  /// the page.
+  key       String      @unique
+  // Not unique on purpose: a unique constraint turns "swap two tiles" into a
+  // three-step dance with a temporary value. Ties break on `id`, so the order
+  // is still total and stable.
+  position  Int
+  published Boolean     @default(false)
+  width     TileWidth   @default(FULL)
+  surface   TileSurface @default(LIGHT)
+
+  headlineRu String
+  headlineEn String
+  subheadRu  String?
+  subheadEn  String?
+
+  imageUrl   String
+  // Usually empty — the headline already names the device. Filled in only when
+  // the image carries something the copy does not.
+  imageAltRu String?
+  imageAltEn String?
+
+  // Two CTAs at most, as columns rather than a child table: "one primary and one
+  // ghost, never a third" is a design rule (ARCHITECTURE.md §5.3), and a child
+  // table would let an admin add a fifth. A label without an href — or the other
+  // way round — is an incomplete action and is dropped when the DTO is built.
+  primaryLabelRu   String?
+  primaryLabelEn   String?
+  primaryHref      String?
+  secondaryLabelRu String?
+  secondaryLabelEn String?
+  secondaryHref    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([published, position])
 }

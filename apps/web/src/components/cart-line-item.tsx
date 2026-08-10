@@ -1,9 +1,10 @@
 'use client';
 
 import type { Route } from 'next';
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { useMoney } from '@/components/currency-provider';
+import { Link } from '@/i18n/navigation';
 import { lineLimit, type CartLine } from '@/lib/cart';
-import { formatMoney } from '@/lib/format';
 import { useCartStore } from '@/stores/cart-store';
 
 type CartLineItemProps = {
@@ -11,6 +12,8 @@ type CartLineItemProps = {
 };
 
 export function CartLineItem({ line }: CartLineItemProps) {
+  const t = useTranslations('cart');
+  const money = useMoney();
   const setQuantity = useCartStore((state) => state.setQuantity);
   const removeItem = useCartStore((state) => state.removeItem);
   const limit = lineLimit(line);
@@ -23,7 +26,13 @@ export function CartLineItem({ line }: CartLineItemProps) {
       >
         {line.image ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={line.image} alt="" width={200} height={200} className="h-full w-full object-cover" />
+          <img
+            src={line.image}
+            alt=""
+            width={200}
+            height={200}
+            className="h-full w-full object-cover"
+          />
         ) : null}
       </Link>
 
@@ -41,12 +50,15 @@ export function CartLineItem({ line }: CartLineItemProps) {
 
         <div className="flex items-center justify-between">
           <label className="flex items-center gap-2 text-sm">
-            <span className="text-ink-muted">Qty</span>
+            <span className="text-ink-muted">{t('quantity')}</span>
             <select
               value={line.quantity}
               onChange={(event) => setQuantity(line.variantId, Number(event.target.value))}
               className="border-line rounded-lg border px-2 py-1"
-              aria-label={`Quantity for ${line.productName}, ${line.variantLabel}`}
+              aria-label={t('quantityLabel', {
+                product: line.productName,
+                variant: line.variantLabel,
+              })}
             >
               {Array.from({ length: limit }, (_, index) => index + 1).map((quantity) => (
                 <option key={quantity} value={quantity}>
@@ -59,14 +71,16 @@ export function CartLineItem({ line }: CartLineItemProps) {
           <button
             type="button"
             onClick={() => removeItem(line.variantId)}
-            className="text-ink-muted text-sm hover:text-ink hover:underline"
+            className="text-ink-muted hover:text-ink text-sm hover:underline"
           >
-            Remove
+            {t('remove')}
           </button>
         </div>
       </div>
 
-      <p className="text-sm font-medium whitespace-nowrap">{formatMoney(line.unitPrice * line.quantity)}</p>
+      <p className="text-sm font-medium whitespace-nowrap">
+        {money(line.unitPrice * line.quantity)}
+      </p>
     </li>
   );
 }

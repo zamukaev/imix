@@ -5,6 +5,9 @@ allowBuilds:
   # prisma query engine binaries
   '@prisma/engines': true
   prisma: true
+  # native build tooling pulled in by next-intl and @nestjs/cli
+  '@parcel/watcher': true
+  '@swc/core': true
   # next/image optimisation
   sharp: true
   # native resolver used by eslint-config-next

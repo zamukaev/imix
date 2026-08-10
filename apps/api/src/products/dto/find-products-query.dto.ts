@@ -9,6 +9,7 @@ import {
   Min,
 } from 'class-validator';
 import type { ProductListQuery } from '@imix/types';
+import { PricedQueryDto } from '../../common/dto/localised-query.dto';
 
 export const DEFAULT_PAGE = 1;
 export const DEFAULT_PAGE_SIZE = 12;
@@ -22,7 +23,10 @@ const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
  * `whitelist` and `forbidNonWhitelisted`, so anything not declared here is a
  * 400 rather than silently ignored.
  */
-export class FindProductsQueryDto implements ProductListQuery {
+export class FindProductsQueryDto
+  extends PricedQueryDto
+  implements ProductListQuery
+{
   @IsOptional()
   @IsString()
   @Matches(SLUG_PATTERN, { message: 'category must be a slug like "phones"' })

@@ -47,9 +47,54 @@ describe('products endpoints', () => {
         name: expect.any(String),
         brand: expect.any(String),
         basePrice: expect.any(Number),
+        currency: 'RUB',
         images: expect.any(Array),
         featured: expect.any(Boolean),
         category: { slug: expect.any(String), name: expect.any(String) },
+      });
+    });
+
+    it('answers in Russian roubles when the request says nothing', async () => {
+      const [bare, explicit] = await Promise.all([
+        request(app.getHttpServer()).get('/products').expect(200),
+        request(app.getHttpServer())
+          .get('/products?locale=ru&currency=RUB')
+          .expect(200),
+      ]);
+
+      expect(bare.body).toEqual(explicit.body);
+    });
+
+    it('prices the same catalogue differently per currency', async () => {
+      const [roubles, dollars] = await Promise.all([
+        request(app.getHttpServer()).get('/products?currency=RUB').expect(200),
+        request(app.getHttpServer()).get('/products?currency=USD').expect(200),
+      ]);
+
+      expect(dollars.body.items[0].currency).toBe('USD');
+      expect(dollars.body.items[0].id).toBe(roubles.body.items[0].id);
+      expect(dollars.body.items[0].basePrice).not.toBe(
+        roubles.body.items[0].basePrice,
+      );
+    });
+
+    it('translates category names without touching the slug', async () => {
+      const [russian, english] = await Promise.all([
+        request(app.getHttpServer())
+          .get('/products?category=laptops&locale=ru')
+          .expect(200),
+        request(app.getHttpServer())
+          .get('/products?category=laptops&locale=en')
+          .expect(200),
+      ]);
+
+      expect(russian.body.items[0].category).toEqual({
+        slug: 'laptops',
+        name: 'Ноутбуки',
+      });
+      expect(english.body.items[0].category).toEqual({
+        slug: 'laptops',
+        name: 'Laptops',
       });
     });
 
@@ -119,6 +164,9 @@ describe('products endpoints', () => {
       ['a non-boolean featured', { featured: 'yes' }],
       ['a malformed category slug', { category: 'Not A Slug' }],
       ['an unknown parameter', { sort: 'price' }],
+      ['a language the shop does not speak', { locale: 'de' }],
+      ['a currency the shop does not quote', { currency: 'EUR' }],
+      ['a lowercase currency', { currency: 'usd' }],
     ])('rejects %s with 400', async (_label, query) => {
       await request(app.getHttpServer())
         .get('/products')
@@ -130,20 +178,21 @@ describe('products endpoints', () => {
   describe('GET /products/:slug', () => {
     it('returns the full product with its variants', async () => {
       const response = await request(app.getHttpServer())
-        .get('/products/nuvo-aster-7-pro')
+        .get('/products/iphone-17-pro')
         .expect(200);
 
       expect(response.body).toEqual({
         id: expect.any(String),
-        slug: 'nuvo-aster-7-pro',
+        slug: 'iphone-17-pro',
         name: expect.any(String),
-        brand: 'Nuvo',
+        brand: 'Apple',
         description: expect.any(String),
         basePrice: expect.any(Number),
+        currency: 'RUB',
         images: expect.any(Array),
         featured: true,
         model3dUrl: null,
-        category: { slug: 'phones', name: 'Phones' },
+        category: { slug: 'phones', name: 'Смартфоны' },
         variants: expect.any(Array),
       });
 
@@ -159,15 +208,36 @@ describe('products endpoints', () => {
       });
     });
 
-    it('orders variants by ascending price', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/products/nuvo-aster-7-pro')
-        .expect(200);
+    it.each(['RUB', 'USD'])(
+      'orders variants by ascending price in %s',
+      async (currency) => {
+        const response = await request(app.getHttpServer())
+          .get(`/products/iphone-17-pro?currency=${currency}`)
+          .expect(200);
 
-      const prices = response.body.variants.map(
-        (variant: { price: number }) => variant.price,
+        const prices = response.body.variants.map(
+          (variant: { price: number }) => variant.price,
+        );
+        expect(prices).toEqual([...prices].sort((a: number, b: number) => a - b));
+      },
+    );
+
+    it('writes the description and variant labels in the requested language', async () => {
+      const [russian, english] = await Promise.all([
+        request(app.getHttpServer())
+          .get('/products/iphone-17-pro?locale=ru')
+          .expect(200),
+        request(app.getHttpServer())
+          .get('/products/iphone-17-pro?locale=en')
+          .expect(200),
+      ]);
+
+      expect(russian.body.description).not.toBe(english.body.description);
+      expect(russian.body.variants[0].label).not.toBe(
+        english.body.variants[0].label,
       );
-      expect(prices).toEqual([...prices].sort((a: number, b: number) => a - b));
+      // The brand reads the same in both — it is a name, not a translation.
+      expect(russian.body.brand).toBe(english.body.brand);
     });
 
     it('404s on an unknown slug', async () => {

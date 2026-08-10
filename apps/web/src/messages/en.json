@@ -1,0 +1,117 @@
+{
+  "metadata": {
+    "titleDefault": "iMIX",
+    "titleTemplate": "{page} · iMIX",
+    "description": "iMIX — iPhone and MacBook, with warranty and delivery across Russia.",
+    "notFound": "Not found",
+    "categoryDescription": "{category} available at iMIX.",
+    "orderTitle": "Your order"
+  },
+  "nav": {
+    "primary": "Primary",
+    "cart": "Cart",
+    "cartItems": "{count, plural, one {# item} other {# items}} in the cart",
+    "language": "Language",
+    "currency": "Currency",
+    "menu": "Menu"
+  },
+  "footer": {
+    "note": "iMIX — an independent Apple hardware retailer. Not affiliated with Apple Inc."
+  },
+  "catalogue": {
+    "productCount": "{count, plural, one {# product} other {# products}}",
+    "empty": "Nothing in this category yet. Check back soon."
+  },
+  "product": {
+    "breadcrumb": "Breadcrumb",
+    "priceFrom": "from {price}",
+    "configuration": "Configuration",
+    "addToCart": "Add to cart",
+    "added": "Added",
+    "unavailable": "Currently unavailable.",
+    "soldOut": "Sold out",
+    "lowStock": "{count, plural, one {Only # left} other {Only # left}}",
+    "inStock": "In stock",
+    "galleryAlt": "{product} — view {index} of {total}",
+    "showView": "Show view {index}"
+  },
+  "cart": {
+    "title": "Cart",
+    "empty": "Your cart is empty.",
+    "continueBrowsing": "Continue browsing",
+    "subtotal": "Subtotal",
+    "checkout": "Checkout",
+    "quantity": "Qty",
+    "quantityLabel": "Quantity for {product}, {variant}",
+    "remove": "Remove",
+    "refreshFailed": "The cart could not be updated. Please reload the page."
+  },
+  "checkout": {
+    "title": "Checkout",
+    "stepShipping": "Shipping",
+    "stepPayment": "Payment",
+    "emptyCart": "There is nothing to check out yet.",
+    "cartBecameEmpty": "Your cart is empty.",
+    "continueBrowsing": "Continue browsing",
+    "contactLegend": "Contact",
+    "shippingLegend": "Shipping",
+    "email": "Email",
+    "emailHint": "We send the order confirmation here.",
+    "name": "Full name",
+    "address": "Street and number",
+    "zip": "Postal code",
+    "city": "City",
+    "country": "Country",
+    "submit": "Continue to payment",
+    "submitPending": "Preparing payment…",
+    "unconfigured": "Payments are not configured for this environment, so checkout is unavailable. Set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY to enable it.",
+    "summaryTitle": "Your order",
+    "summaryTotal": "Total",
+    "summaryNote": "Shipping and taxes included.",
+    "pay": "Pay {amount}",
+    "paying": "Processing…",
+    "paymentNote": "Payments are processed by Stripe. iMIX never sees your card details.",
+    "paymentFailed": "The payment could not be completed. Please try again."
+  },
+  "validation": {
+    "email": "Enter an email address so we can send the confirmation",
+    "name": "Enter the name the parcel is addressed to",
+    "nameTooLong": "That name is too long",
+    "address": "Enter a street and house number",
+    "addressTooLong": "That address is too long",
+    "city": "Enter a city",
+    "cityTooLong": "That city name is too long",
+    "zip": "Enter a postal code",
+    "zipTooLong": "That postal code is too long",
+    "country": "Pick a country we ship to"
+  },
+  "order": {
+    "headlinePending": "Almost done",
+    "headlinePaid": "Thank you",
+    "headlineFailed": "Payment failed",
+    "headlineShipped": "On its way",
+    "headlineCancelled": "Order cancelled",
+    "statusPending": "Confirming your payment with the bank…",
+    "statusPaid": "Payment confirmed. A receipt is on its way to your inbox.",
+    "statusFailed": "The payment did not go through. No money has been taken.",
+    "statusShipped": "This order has been handed to the carrier.",
+    "statusCancelled": "This order has been cancelled.",
+    "reference": "Order <ref>{id}</ref> · {date}",
+    "backToCart": "Back to cart",
+    "items": "Items",
+    "deliveringTo": "Delivering to",
+    "confirmationSentTo": "Confirmation sent to {email}",
+    "total": "Total",
+    "totalPaid": "Total paid",
+    "continueBrowsing": "Continue browsing"
+  },
+  "notFound": {
+    "code": "404",
+    "title": "We cannot find that page.",
+    "lead": "The product or category may have been renamed or removed.",
+    "back": "Back to the catalogue"
+  },
+  "errors": {
+    "fallback": "Something went wrong. Please try again."
+  }
+}

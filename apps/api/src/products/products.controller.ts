@@ -4,6 +4,7 @@ import type {
   ProductDetailDto,
   ProductListItemDto,
 } from '@imix/types';
+import { PricedQueryDto } from '../common/dto/localised-query.dto';
 import { FindProductsQueryDto } from './dto/find-products-query.dto';
 import { ProductsService } from './products.service';
 
@@ -19,7 +20,10 @@ export class ProductsController {
   }
 
   @Get(':slug')
-  findOne(@Param('slug') slug: string): Promise<ProductDetailDto> {
-    return this.products.findBySlug(slug);
+  findOne(
+    @Param('slug') slug: string,
+    @Query() query: PricedQueryDto,
+  ): Promise<ProductDetailDto> {
+    return this.products.findBySlug(slug, query.locale, query.currency);
   }
 }

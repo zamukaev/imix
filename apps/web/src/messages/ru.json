@@ -1,0 +1,117 @@
+{
+  "metadata": {
+    "titleDefault": "iMIX",
+    "titleTemplate": "{page} · iMIX",
+    "description": "iMIX — iPhone и MacBook с гарантией и доставкой по России.",
+    "notFound": "Страница не найдена",
+    "categoryDescription": "{category} в наличии в iMIX.",
+    "orderTitle": "Ваш заказ"
+  },
+  "nav": {
+    "primary": "Основная навигация",
+    "cart": "Корзина",
+    "cartItems": "{count, plural, one {# товар} few {# товара} many {# товаров} other {# товара}} в корзине",
+    "language": "Язык",
+    "currency": "Валюта",
+    "menu": "Меню"
+  },
+  "footer": {
+    "note": "iMIX — независимый магазин техники Apple. Не является Apple Inc."
+  },
+  "catalogue": {
+    "productCount": "{count, plural, one {# товар} few {# товара} many {# товаров} other {# товара}}",
+    "empty": "В этой категории пока ничего нет. Загляните позже."
+  },
+  "product": {
+    "breadcrumb": "Навигационная цепочка",
+    "priceFrom": "от {price}",
+    "configuration": "Конфигурация",
+    "addToCart": "В корзину",
+    "added": "Добавлено",
+    "unavailable": "Сейчас недоступно.",
+    "soldOut": "Распродано",
+    "lowStock": "{count, plural, one {Остался # штука} few {Осталось # штуки} many {Осталось # штук} other {Осталось # штуки}}",
+    "inStock": "В наличии",
+    "galleryAlt": "{product} — изображение {index} из {total}",
+    "showView": "Показать изображение {index}"
+  },
+  "cart": {
+    "title": "Корзина",
+    "empty": "В корзине пока пусто.",
+    "continueBrowsing": "Перейти в каталог",
+    "subtotal": "Промежуточный итог",
+    "checkout": "Оформить заказ",
+    "quantity": "Кол-во",
+    "quantityLabel": "Количество: {product}, {variant}",
+    "remove": "Удалить",
+    "refreshFailed": "Не удалось обновить корзину. Обновите страницу."
+  },
+  "checkout": {
+    "title": "Оформление заказа",
+    "stepShipping": "Доставка",
+    "stepPayment": "Оплата",
+    "emptyCart": "Оформлять пока нечего.",
+    "cartBecameEmpty": "Ваша корзина пуста.",
+    "continueBrowsing": "Перейти в каталог",
+    "contactLegend": "Контакты",
+    "shippingLegend": "Доставка",
+    "email": "Электронная почта",
+    "emailHint": "Сюда придёт подтверждение заказа.",
+    "name": "Имя и фамилия",
+    "address": "Улица и дом",
+    "zip": "Индекс",
+    "city": "Город",
+    "country": "Страна",
+    "submit": "Перейти к оплате",
+    "submitPending": "Готовим оплату…",
+    "unconfigured": "Оплата не настроена в этом окружении, оформить заказ нельзя. Задайте NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, чтобы включить её.",
+    "summaryTitle": "Ваш заказ",
+    "summaryTotal": "Итого",
+    "summaryNote": "Доставка и налоги включены.",
+    "pay": "Оплатить {amount}",
+    "paying": "Обрабатываем…",
+    "paymentNote": "Платежи обрабатывает Stripe. iMIX не видит данные вашей карты.",
+    "paymentFailed": "Не удалось провести оплату. Попробуйте ещё раз."
+  },
+  "validation": {
+    "email": "Укажите почту, чтобы мы отправили подтверждение",
+    "name": "Укажите имя получателя",
+    "nameTooLong": "Слишком длинное имя",
+    "address": "Укажите улицу и номер дома",
+    "addressTooLong": "Слишком длинный адрес",
+    "city": "Укажите город",
+    "cityTooLong": "Слишком длинное название города",
+    "zip": "Укажите индекс",
+    "zipTooLong": "Слишком длинный индекс",
+    "country": "Выберите страну, куда мы доставляем"
+  },
+  "order": {
+    "headlinePending": "Почти готово",
+    "headlinePaid": "Спасибо",
+    "headlineFailed": "Оплата не прошла",
+    "headlineShipped": "Заказ в пути",
+    "headlineCancelled": "Заказ отменён",
+    "statusPending": "Подтверждаем оплату с банком…",
+    "statusPaid": "Оплата подтверждена. Чек уже летит на вашу почту.",
+    "statusFailed": "Оплата не прошла. Деньги не списаны.",
+    "statusShipped": "Заказ передан в доставку.",
+    "statusCancelled": "Этот заказ отменён.",
+    "reference": "Заказ <ref>{id}</ref> · {date}",
+    "backToCart": "Вернуться в корзину",
+    "items": "Состав заказа",
+    "deliveringTo": "Доставка по адресу",
+    "confirmationSentTo": "Подтверждение отправлено на {email}",
+    "total": "Итого",
+    "totalPaid": "Оплачено",
+    "continueBrowsing": "Перейти в каталог"
+  },
+  "notFound": {
+    "code": "404",
+    "title": "Такой страницы нет.",
+    "lead": "Товар или категорию могли переименовать или снять с продажи.",
+    "back": "Вернуться в каталог"
+  },
+  "errors": {
+    "fallback": "Что-то пошло не так. Попробуйте ещё раз."
+  }
+}
