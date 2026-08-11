@@ -213,11 +213,21 @@ Public:
   credential
 - `POST /payments/intent` → returns the client secret for an order, charged in
   the order's own frozen currency
-- `POST /auth/register` · `POST /auth/login` · `POST /auth/refresh` _(Phase 3)_
+- `POST /auth/register` → always a USER; there is no way to ask for a role
+- `POST /auth/login` · `POST /auth/refresh`
 
-Authenticated (USER, Phase 3):
+`POST /orders` additionally reads an optional bearer token: a signed-in buyer
+gets `userId` on the order, a guest gets exactly what they got before. A token
+it cannot verify is ignored rather than refused — the endpoint is public, so
+there is nothing there to refuse.
 
-- `GET  /orders/me`
+Authenticated (USER):
+
+- `GET  /auth/me` → the current account, read from the database rather than
+  restated from the token
+- `GET  /orders/me` → orders placed while signed in, newest first. Guest orders
+  made with the same address are deliberately not included: matching on email
+  would hand somebody's history to whoever registers with it later
 
 Admin (ADMIN role guard):
 
@@ -313,6 +323,34 @@ app/
   the affected products and restates the lines (`useCartRefresh`); the switch is
   only committed once that succeeds, so the cart can never disagree with the
   page around it.
+
+### 4.2 The session
+
+Two tokens, two cookies, and a clear split over who is allowed to believe them.
+
+- **The API sets no cookies.** It answers `/auth/*` with tokens in the body. The
+  web app's own route handlers under `app/api/auth/` call it and put the pair
+  into httpOnly cookies (`imix-access`, `imix-refresh`). The two run on different
+  origins, so an API-set cookie would need `SameSite=None; Secure` and would not
+  survive local development.
+- **The storefront does not verify signatures** (`lib/jwt-claims.ts`). Only the
+  API holds the signing secret, and it checks every request against it. Decoding
+  the cookie here decides which link the header shows and which page redirects —
+  never what data anyone gets. Forging the cookie buys a signed-in looking page
+  whose every request comes back 401.
+- **The middleware renews the session** when the access token has aged out and a
+  refresh token is still good. Not a preference: a Server Component cannot set a
+  cookie, so there is nowhere else to do it, and without it a fifteen-minute
+  access token would show a shopper as signed out while their session was fine.
+  The new token is written onto the request as well as the response, so the page
+  being rendered already sees it.
+- **Refresh tokens are stateless JWTs**, with no table behind them. A single
+  session therefore cannot be revoked before it expires; rotating
+  `JWT_REFRESH_SECRET` invalidates all of them at once, which is the escape
+  hatch until a session table earns its keep.
+- **The checkout posts through `app/api/orders/`** rather than straight to the
+  API. A client component cannot read an httpOnly cookie — that is the point of
+  it — so the route handler is what turns the session into a bearer token.
 
 ## 5. Design language
 
@@ -456,7 +494,11 @@ size is defined — no ad-hoc `text-[52px]` in components.
 ## 7. Environments
 
 - `.env` (api): `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`,
+  `ADMIN_EMAIL` / `ADMIN_PASSWORD` (the seed's first admin),
   `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `CLOUDINARY_*` / `S3_*`.
+  The two JWT secrets are required in production and fall back to a development
+  value with a warning elsewhere — auth cannot degrade into a 503 the way
+  payments can.
 - `.env.local` (web): `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`.
 - Local Postgres via Docker (`docker compose up db`) — add a compose file in Phase 1.
 

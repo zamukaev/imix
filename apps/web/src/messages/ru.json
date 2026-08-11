@@ -13,7 +13,9 @@
     "cartItems": "{count, plural, one {# товар} few {# товара} many {# товаров} other {# товара}} в корзине",
     "language": "Язык",
     "currency": "Валюта",
-    "menu": "Меню"
+    "menu": "Меню",
+    "signIn": "Войти",
+    "signOut": "Выйти"
   },
   "footer": {
     "note": "iMIX — независимый магазин техники Apple. Не является Apple Inc."
@@ -73,8 +75,31 @@
     "paymentNote": "Платежи обрабатывает Stripe. iMIX не видит данные вашей карты.",
     "paymentFailed": "Не удалось провести оплату. Попробуйте ещё раз."
   },
+  "auth": {
+    "signInTitle": "Вход",
+    "signInLead": "Войдите, чтобы видеть свои заказы в одном месте.",
+    "signUpTitle": "Регистрация",
+    "signUpLead": "Аккаунт нужен только для истории заказов — оформить покупку можно и без него.",
+    "email": "Электронная почта",
+    "password": "Пароль",
+    "passwordHint": "Не короче {count} символов.",
+    "name": "Имя",
+    "nameHint": "Необязательно.",
+    "signInSubmit": "Войти",
+    "signInPending": "Входим…",
+    "signUpSubmit": "Создать аккаунт",
+    "signUpPending": "Создаём аккаунт…",
+    "noAccount": "Ещё нет аккаунта?",
+    "signUpLink": "Зарегистрироваться",
+    "haveAccount": "Уже есть аккаунт?",
+    "signInLink": "Войти"
+  },
   "validation": {
     "email": "Укажите почту, чтобы мы отправили подтверждение",
+    "authEmail": "Укажите почту в формате name@example.com",
+    "password": "Введите пароль",
+    "passwordTooShort": "Пароль должен быть не короче {count} символов",
+    "passwordTooLong": "Слишком длинный пароль",
     "name": "Укажите имя получателя",
     "nameTooLong": "Слишком длинное имя",
     "address": "Укажите улицу и номер дома",

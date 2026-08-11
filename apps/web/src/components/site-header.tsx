@@ -1,4 +1,5 @@
 import { getTranslations } from 'next-intl/server';
+import { AccountLink } from '@/components/account-link';
 import { CartLink } from '@/components/cart-link';
 import { CategoryNav } from '@/components/category-nav';
 import { CurrencySwitcher } from '@/components/currency-switcher';
@@ -38,6 +39,7 @@ export async function SiteHeader() {
         <div className="flex items-center gap-3 sm:gap-4">
           <CurrencySwitcher current={currency} />
           <LanguageSwitcher current={locale} currency={currency} />
+          <AccountLink />
           <CartLink />
         </div>
       </nav>

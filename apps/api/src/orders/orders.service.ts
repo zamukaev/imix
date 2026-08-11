@@ -96,6 +96,7 @@ export class OrdersService {
   async create(
     dto: CreateOrderDto,
     locale: Locale = DEFAULT_LOCALE,
+    userId?: string,
   ): Promise<OrderDto> {
     const quantities = mergeQuantities(dto.items);
 
@@ -149,6 +150,9 @@ export class OrdersService {
 
     const order = await this.prisma.order.create({
       data: {
+        // Null for a guest. `email` stays the owner reference either way, so a
+        // confirmation link keeps working whether or not anybody signed in.
+        userId: userId ?? null,
         email: dto.email,
         total: subtotal(lines),
         currency: dto.currency,
@@ -169,6 +173,25 @@ export class OrdersService {
     });
 
     return toOrderDto(order, locale);
+  }
+
+  /**
+   * Every order placed while signed in, newest first. Guest orders the same
+   * person made before signing in are not here — they carry no `userId`, and
+   * matching on email would hand somebody else's history to anyone who
+   * registers with an address they used at checkout.
+   */
+  async findByUser(
+    userId: string,
+    locale: Locale = DEFAULT_LOCALE,
+  ): Promise<OrderDto[]> {
+    const orders = await this.prisma.order.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      select: orderSelect,
+    });
+
+    return orders.map((order) => toOrderDto(order, locale));
   }
 
   async findById(id: string, locale: Locale = DEFAULT_LOCALE): Promise<OrderDto> {

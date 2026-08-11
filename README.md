@@ -62,8 +62,15 @@ docker compose ps
 
 ```bash
 pnpm --filter api db:migrate   # creates the tables
-pnpm --filter api db:seed      # 2 categories, 4 products, 9 variants
+pnpm --filter api db:seed      # catalogue, home tiles and the admin account
 ```
+
+The seed prints what it wrote. It creates the first **ADMIN** from `ADMIN_EMAIL`
+and `ADMIN_PASSWORD` in `apps/api/.env` — set them before this step, because
+registering through the storefront always creates a plain shopper account. Fill
+in `JWT_SECRET` and `JWT_REFRESH_SECRET` at the same time
+(`openssl rand -base64 32` each); without them the API signs tokens with a
+development fallback and says so in the log.
 
 **5. Start both apps**
 

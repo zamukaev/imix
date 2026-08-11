@@ -12,3 +12,5 @@ allowBuilds:
   sharp: true
   # native resolver used by eslint-config-next
   unrs-resolver: true
+  # password hashing — native addon, ships prebuilt binaries
+  argon2: true

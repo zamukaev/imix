@@ -5,6 +5,16 @@
  * shape breaks compilation on whichever side has not been updated.
  */
 
+export { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, ROLES } from './auth';
+export type {
+  AccessTokenPayload,
+  AuthResponse,
+  LoginRequest,
+  RefreshRequest,
+  RegisterRequest,
+  Role,
+  UserDto,
+} from './auth';
 export {
   CURRENCIES,
   DEFAULT_CURRENCY,

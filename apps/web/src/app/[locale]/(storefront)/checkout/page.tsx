@@ -10,7 +10,7 @@ import { CheckoutShippingForm } from '@/components/checkout-shipping-form';
 import { CheckoutSummary } from '@/components/checkout-summary';
 import { useRequestContext } from '@/components/currency-provider';
 import { Link } from '@/i18n/navigation';
-import { createOrder, createPaymentIntent, toUserMessage } from '@/lib/api';
+import { createPaymentIntent, placeOrder, toUserMessage } from '@/lib/api';
 import {
   EMPTY_SHIPPING_FORM,
   buildOrderRequest,
@@ -96,7 +96,12 @@ export default function CheckoutPage() {
         // The order is priced and stored before Stripe is involved, so the
         // amount being charged is always one the server decided on — in the
         // currency the shopper has been browsing in.
-        const order = await createOrder(
+        //
+        // It goes through this app's own `/api/orders` rather than straight to
+        // the API: same-origin, so the session cookie comes along and a
+        // signed-in buyer ends up on the order. A guest posts the same body and
+        // nothing about the flow changes.
+        const order = await placeOrder(
           buildOrderRequest(parsed.values, lines, currency),
         );
         const intent = await createPaymentIntent(order.id);

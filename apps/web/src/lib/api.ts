@@ -1,17 +1,21 @@
 import type {
   ApiError,
+  AuthResponse,
   CategoryDto,
   CreateOrderRequest,
   Currency,
   HealthResponse,
   HomeTileDto,
   Locale,
+  LoginRequest,
   OrderDto,
   Paginated,
   PaymentIntentDto,
   ProductDetailDto,
   ProductListItemDto,
   ProductListQuery,
+  RegisterRequest,
+  UserDto,
 } from '@imix/types';
 
 /**
@@ -93,11 +97,24 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   return (await response.json()) as T;
 }
 
+/**
+ * A caller the API will recognise, or nobody.
+ *
+ * Only server code can produce one: the access token lives in an httpOnly
+ * cookie, so a client component has no way to read it and no business trying —
+ * it goes through a same-origin route handler instead.
+ */
+export type Authorization = { accessToken: string };
+
+function authHeader(auth?: Authorization): Record<string, string> {
+  return auth ? { Authorization: `Bearer ${auth.accessToken}` } : {};
+}
+
 /** Mutations are always live: no cache, JSON in, JSON out. */
-function apiPost<T>(path: string, body: unknown): Promise<T> {
+function apiPost<T>(path: string, body: unknown, auth?: Authorization): Promise<T> {
   return apiFetch<T>(path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeader(auth) },
     body: JSON.stringify(body),
     cache: 'no-store',
   });
@@ -165,9 +182,65 @@ export function getProduct(
  * The currency travels in the body, not the query string: it decides what the
  * shopper is charged, so it belongs to the order rather than to the rendering
  * of the response.
+ *
+ * `auth` is optional because guest checkout is a first-class flow. Passing it
+ * only adds the buyer to the order — it is never what makes the sale possible.
  */
-export function createOrder(request: CreateOrderRequest): Promise<OrderDto> {
-  return apiPost<OrderDto>('/orders', request);
+export function createOrder(
+  request: CreateOrderRequest,
+  auth?: Authorization,
+): Promise<OrderDto> {
+  return apiPost<OrderDto>('/orders', request, auth);
+}
+
+/**
+ * The browser's way to place an order: same-origin, so the session cookie rides
+ * along and `app/api/orders/route.ts` turns it into a bearer token. A client
+ * component cannot call `createOrder` itself — it cannot read an httpOnly
+ * cookie, which is exactly why the cookie is httpOnly.
+ */
+export async function placeOrder(request: CreateOrderRequest): Promise<OrderDto> {
+  const response = await fetch('/api/orders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new ApiRequestError(
+      response.status,
+      '/api/orders',
+      await readErrorDetail(response),
+    );
+  }
+
+  return (await response.json()) as OrderDto;
+}
+
+/**
+ * Auth. These three talk to the API directly and are meant for the route
+ * handlers under `app/api/auth/` — they are what turn a token into a cookie.
+ * A form never calls them: it posts to the route handler.
+ */
+export function login(request: LoginRequest): Promise<AuthResponse> {
+  return apiPost<AuthResponse>('/auth/login', request);
+}
+
+export function register(request: RegisterRequest): Promise<AuthResponse> {
+  return apiPost<AuthResponse>('/auth/register', request);
+}
+
+export function refreshTokens(refreshToken: string): Promise<AuthResponse> {
+  return apiPost<AuthResponse>('/auth/refresh', { refreshToken });
+}
+
+/** The account behind a token, read fresh — never restated from the cookie. */
+export function getMe(auth: Authorization): Promise<UserDto> {
+  return apiFetch<UserDto>('/auth/me', {
+    headers: authHeader(auth),
+    cache: 'no-store',
+  });
 }
 
 /**

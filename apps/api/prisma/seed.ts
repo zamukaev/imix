@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
+import { hash } from 'argon2';
 
 /**
  * Seed data for local development.
@@ -618,7 +619,38 @@ const homeTiles: readonly HomeTileSeed[] = [
   },
 ];
 
+/**
+ * The first ADMIN. There is no way to become one through the API — registration
+ * always creates a USER — so the shop needs exactly one account it can be
+ * bootstrapped with, and this is it.
+ *
+ * Skipped when the variables are absent: the seed has to keep running for
+ * anyone who only set `DATABASE_URL` and wants a catalogue to look at.
+ */
+async function seedAdmin(): Promise<string> {
+  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD;
+
+  if (!email || !password) {
+    return 'no admin (set ADMIN_EMAIL and ADMIN_PASSWORD to create one)';
+  }
+
+  const passwordHash = await hash(password);
+
+  // The password is updated on every run, so a forgotten one is a matter of
+  // editing .env and re-seeding rather than a trip to the database.
+  await prisma.user.upsert({
+    where: { email },
+    update: { passwordHash, role: 'ADMIN' },
+    create: { email, passwordHash, role: 'ADMIN', name: 'iMIX admin' },
+  });
+
+  return `admin ${email}`;
+}
+
 async function main(): Promise<void> {
+  const adminSummary = await seedAdmin();
+
   for (const category of categories) {
     const { slug, ...names } = category;
 
@@ -666,7 +698,7 @@ async function main(): Promise<void> {
 
   process.stdout.write(
     `Seeded ${categoryCount} categories, ${productCount} products, ${variantCount} variants, ` +
-      `${tileCount} home tiles (${publishedTiles} published).\n`,
+      `${tileCount} home tiles (${publishedTiles} published), ${adminSummary}.\n`,
   );
 }
 

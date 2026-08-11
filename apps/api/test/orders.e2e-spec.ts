@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { MAX_ORDER_ITEM_QUANTITY } from '@imix/types';
 import { AppModule } from '../src/app.module';
+import { PrismaService } from '../src/prisma/prisma.service';
 
 type Variant = { id: string; label: string; price: number; stock: number };
 
@@ -313,6 +314,104 @@ describe('orders endpoints', () => {
       await request(app.getHttpServer())
         .get(`/orders/${'z'.repeat(25)}`)
         .expect(404);
+    });
+  });
+
+  /**
+   * Auth arrived in Phase 3.1 without taking guest checkout away. What changes
+   * for a signed-in shopper is one column, so these two cases sit next to each
+   * other on purpose.
+   */
+  describe('ownership', () => {
+    const ACCOUNT = 'e2e-orders-owner@example.com';
+    let prisma: PrismaService;
+    let accessToken: string;
+    let userId: string;
+
+    beforeAll(async () => {
+      prisma = app.get(PrismaService);
+      await prisma.user.deleteMany({ where: { email: ACCOUNT } });
+
+      const registered = await request(app.getHttpServer())
+        .post('/auth/register')
+        .send({ email: ACCOUNT, password: 'correct-horse-battery' })
+        .expect(201);
+
+      accessToken = registered.body.accessToken;
+      userId = registered.body.user.id;
+    });
+
+    afterAll(async () => {
+      // Unwound in reference order: items point at the order, the order points
+      // at the user. The guest orders these tests also create are left where
+      // they are, like every other order this spec places.
+      await prisma.orderItem.deleteMany({ where: { order: { userId } } });
+      await prisma.order.deleteMany({ where: { userId } });
+      await prisma.user.deleteMany({ where: { email: ACCOUNT } });
+    });
+
+    it('leaves a guest order unowned', async () => {
+      const variant = firstVariant();
+
+      const created = await request(app.getHttpServer())
+        .post('/orders')
+        .send(validBody([{ variantId: variant.id, quantity: 1 }]))
+        .expect(201);
+
+      const row = await prisma.order.findUnique({
+        where: { id: created.body.id },
+        select: { userId: true, email: true },
+      });
+
+      expect(row?.userId).toBeNull();
+      // The email is still the only owner reference a guest has.
+      expect(row?.email).toBe('mila@example.com');
+    });
+
+    it('stamps the buyer on an order placed with a token', async () => {
+      const variant = firstVariant();
+
+      const created = await request(app.getHttpServer())
+        .post('/orders')
+        .set('authorization', `Bearer ${accessToken}`)
+        .send(validBody([{ variantId: variant.id, quantity: 1 }]))
+        .expect(201);
+
+      const row = await prisma.order.findUnique({
+        where: { id: created.body.id },
+        select: { userId: true },
+      });
+
+      expect(row?.userId).toBe(userId);
+    });
+
+    it('ignores a token it cannot verify rather than refusing the sale', async () => {
+      const variant = firstVariant();
+
+      // The endpoint is public: a broken Authorization header must not cost
+      // somebody their order.
+      const created = await request(app.getHttpServer())
+        .post('/orders')
+        .set('authorization', 'Bearer not.a.token')
+        .send(validBody([{ variantId: variant.id, quantity: 1 }]))
+        .expect(201);
+
+      const row = await prisma.order.findUnique({
+        where: { id: created.body.id },
+        select: { userId: true },
+      });
+
+      expect(row?.userId).toBeNull();
+    });
+
+    it('lists only the orders placed while signed in', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/orders/me')
+        .set('authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(response.body).toHaveLength(1);
+      expect(response.body[0].email).toBe('mila@example.com');
     });
   });
 });

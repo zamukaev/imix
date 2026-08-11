@@ -13,7 +13,9 @@
     "cartItems": "{count, plural, one {# item} other {# items}} in the cart",
     "language": "Language",
     "currency": "Currency",
-    "menu": "Menu"
+    "menu": "Menu",
+    "signIn": "Sign in",
+    "signOut": "Sign out"
   },
   "footer": {
     "note": "iMIX — an independent Apple hardware retailer. Not affiliated with Apple Inc."
@@ -73,8 +75,31 @@
     "paymentNote": "Payments are processed by Stripe. iMIX never sees your card details.",
     "paymentFailed": "The payment could not be completed. Please try again."
   },
+  "auth": {
+    "signInTitle": "Sign in",
+    "signInLead": "Sign in to keep your orders in one place.",
+    "signUpTitle": "Create an account",
+    "signUpLead": "An account is only for your order history — you can check out without one.",
+    "email": "Email",
+    "password": "Password",
+    "passwordHint": "At least {count} characters.",
+    "name": "Name",
+    "nameHint": "Optional.",
+    "signInSubmit": "Sign in",
+    "signInPending": "Signing in…",
+    "signUpSubmit": "Create account",
+    "signUpPending": "Creating account…",
+    "noAccount": "No account yet?",
+    "signUpLink": "Create one",
+    "haveAccount": "Already have an account?",
+    "signInLink": "Sign in"
+  },
   "validation": {
     "email": "Enter an email address so we can send the confirmation",
+    "authEmail": "Enter an email address like name@example.com",
+    "password": "Enter your password",
+    "passwordTooShort": "Use at least {count} characters",
+    "passwordTooLong": "That password is too long",
     "name": "Enter the name the parcel is addressed to",
     "nameTooLong": "That name is too long",
     "address": "Enter a street and house number",

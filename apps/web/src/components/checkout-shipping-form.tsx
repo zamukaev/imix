@@ -1,20 +1,14 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { FIELD_CLASS, Field, LEGEND_CLASS } from '@/components/ui/form-field';
 import {
   SHIPPING_COUNTRY_CODES,
   type ShippingFieldErrors,
   type ShippingFormRaw,
-  type ShippingFormValues,
 } from '@/lib/checkout';
 import { formatCountry } from '@/lib/format';
-
-const FIELD_CLASS =
-  'border-line focus-visible:border-ink focus-visible:ring-ink/15 aria-invalid:border-danger w-full rounded-xl border bg-transparent px-4 py-3 text-sm outline-none transition-colors focus-visible:ring-4';
-
-const LEGEND_CLASS = 'text-ink-muted mb-4 text-xs tracking-widest uppercase';
 
 type CheckoutShippingFormProps = {
   /** Server action wired up by `useActionState` on the page. */
@@ -166,53 +160,3 @@ export function CheckoutShippingForm({
   );
 }
 
-type FieldRenderProps = {
-  id: string;
-  name: keyof ShippingFormValues;
-  'aria-invalid': boolean;
-  'aria-describedby': string | undefined;
-};
-
-type FieldProps = {
-  name: keyof ShippingFormValues;
-  label: string;
-  hint?: string;
-  error: string | undefined;
-  children: (props: FieldRenderProps) => ReactNode;
-};
-
-/**
- * Label, control and message as one unit — the control is a render prop so each
- * field keeps its own input type while the wiring between the three ids stays
- * in a single place.
- */
-function Field({ name, label, hint, error, children }: FieldProps) {
-  const hintId = hint ? `${name}-hint` : undefined;
-  const errorId = error ? `${name}-error` : undefined;
-  const describedBy = [errorId, hintId].filter(Boolean).join(' ') || undefined;
-
-  return (
-    <div className="space-y-1.5">
-      <label htmlFor={name} className="block text-sm font-medium">
-        {label}
-      </label>
-
-      {children({
-        id: name,
-        name,
-        'aria-invalid': error !== undefined,
-        'aria-describedby': describedBy,
-      })}
-
-      {error ? (
-        <p id={errorId} className="text-danger text-xs">
-          {error}
-        </p>
-      ) : hint ? (
-        <p id={hintId} className="text-ink-muted text-xs">
-          {hint}
-        </p>
-      ) : null}
-    </div>
-  );
-}
