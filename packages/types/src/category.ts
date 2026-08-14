@@ -1,4 +1,5 @@
 import type { LocalisedQuery } from './common';
+import type { ProductGroupDto } from './product';
 
 /**
  * A catalogue category. Response element of `GET /categories`.
@@ -13,6 +14,12 @@ export type CategoryDto = {
   name: string;
   /** How many products the category currently holds. */
   productCount: number;
+  /**
+   * The tabs the category page offers, in display order. Empty for most lines;
+   * fewer than two means the page shows no tab bar at all, because a single tab
+   * is not a choice.
+   */
+  groups: ProductGroupDto[];
 };
 
 /** Accepted query string of `GET /categories`. */

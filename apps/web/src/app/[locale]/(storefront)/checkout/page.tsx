@@ -21,6 +21,7 @@ import {
   type ValidationMessages,
 } from '@/lib/checkout';
 import { useCartStore } from '@/stores/cart-store';
+import { MAIN_CONTENT_ID } from '@/lib/main-content';
 
 /**
  * Stripe.js is fetched once per page load, not per render — `loadStripe` is
@@ -233,7 +234,7 @@ function CheckoutSteps({ current }: { current: CheckoutState['step'] }) {
 
 function CheckoutShell({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <main className="mx-auto max-w-5xl px-6 py-16">
+    <main id={MAIN_CONTENT_ID} className="mx-auto max-w-5xl px-6 py-16">
       <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{title}</h1>
       {children}
     </main>

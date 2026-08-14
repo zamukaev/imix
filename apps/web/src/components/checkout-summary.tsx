@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useMoney } from '@/components/currency-provider';
 import { cartSubtotal, type CartLine } from '@/lib/cart';
@@ -30,12 +31,12 @@ export function CheckoutSummary({ lines }: CheckoutSummaryProps) {
               className="border-line bg-surface flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border"
             >
               {line.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={line.image}
                   alt=""
                   width={96}
                   height={96}
+                  sizes="48px"
                   className="h-full w-full object-cover"
                 />
               ) : null}

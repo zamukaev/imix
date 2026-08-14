@@ -58,6 +58,8 @@
     "typescript": "^5.9.3"
   },
   "jest": {
+    "//maxWorkers": "One worker: every e2e spec talks to the same Postgres. Run in parallel and one suite's fixtures land inside another's shop-wide assertion. The whole suite is a few seconds either way.",
+    "maxWorkers": 1,
     "moduleFileExtensions": [
       "js",
       "json",

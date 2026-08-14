@@ -22,10 +22,16 @@ export function CartLink() {
       {t('cart')}
       {itemCount > 0 && (
         <span
-          aria-label={t('cartItems', { count: itemCount })}
+          // Polite, not assertive: adding something to the cart should be
+          // confirmed at the next pause, not by interrupting whatever is being
+          // read. The number alone would announce as a bare digit, so the label
+          // carries the sentence and the badge is hidden from the reader.
+          role="status"
+          aria-live="polite"
           className="bg-ink text-surface inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-medium"
         >
-          {itemCount}
+          <span className="sr-only">{t('cartItems', { count: itemCount })}</span>
+          <span aria-hidden="true">{itemCount}</span>
         </span>
       )}
     </Link>

@@ -5,6 +5,27 @@
  * shape breaks compilation on whichever side has not been updated.
  */
 
+export { ADMIN_ORDER_TRANSITIONS, canTransition } from './admin';
+export type {
+  AdminCatalogueStatsDto,
+  AdminCategoryDto,
+  AdminCategoryRefDto,
+  AdminOrderCountsDto,
+  AdminOrderDto,
+  AdminOrderListQuery,
+  AdminProductDto,
+  AdminProductGroupDto,
+  AdminProductListItemDto,
+  AdminRevenueDto,
+  AdminStatsDto,
+  AdminVariantDto,
+  CategoryWriteRequest,
+  CreateProductRequest,
+  ProductWriteRequest,
+  UpdateOrderStatusRequest,
+  UploadedAssetDto,
+  VariantWriteRequest,
+} from './admin';
 export { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, ROLES } from './auth';
 export type {
   AccessTokenPayload,
@@ -32,15 +53,24 @@ export type {
 } from './common';
 export type { CategoryDto, CategoryListQuery } from './category';
 export type { HealthResponse } from './health';
+export {
+  HOME_TILE_SURFACES,
+  HOME_TILE_WIDTHS,
+  TILE_MOVE_DIRECTIONS,
+} from './home-tile';
 export type {
+  AdminHomeTileDto,
   HomeTileActionDto,
   HomeTileActions,
   HomeTileDto,
   HomeTileListQuery,
   HomeTileSurface,
   HomeTileWidth,
+  HomeTileWriteRequest,
+  MoveHomeTileRequest,
+  TileMoveDirection,
 } from './home-tile';
-export { MAX_ORDER_ITEM_QUANTITY } from './order';
+export { MAX_ORDER_ITEM_QUANTITY, ORDER_STATUSES } from './order';
 export type {
   CreateOrderItemDto,
   CreateOrderRequest,
@@ -51,9 +81,11 @@ export type {
   ShippingAddressDto,
 } from './order';
 export type { CreatePaymentIntentRequest, PaymentIntentDto } from './payment';
+export { MAX_PRODUCT_PAGE_SIZE } from './product';
 export type {
   ProductCategoryDto,
   ProductDetailDto,
+  ProductGroupDto,
   ProductListItemDto,
   ProductListQuery,
   ProductVariantDto,

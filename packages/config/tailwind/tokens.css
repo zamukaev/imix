@@ -16,6 +16,12 @@
   --color-surface: #ffffff;
   --color-surface-alt: #f5f5f7;
   --color-surface-dark: #000000;
+  /*
+   * One step below `--color-surface-alt`: the track a segmented control sits in.
+   * A control needs to read as recessed against the band around it, and on the
+   * alt surface `--color-surface-alt` itself is invisible.
+   */
+  --color-surface-sunken: #e6e6eb;
   --color-line: #e3e3e8;
 
   /*
@@ -91,6 +97,12 @@
    */
   --spacing-tile: max(88svh, 48rem);
   --spacing-tile-half: max(62svh, 42rem);
+  /*
+   * One model card in the category carousel. Fixed rather than fractional, so
+   * the next card is cut off by the viewport edge at every width — that sliver
+   * is what says the row scrolls.
+   */
+  --spacing-model-card: 20rem;
   --radius-card: 1.25rem;
   /* Buttons are pills: larger than any height they can reach. */
   --radius-pill: 980px;
@@ -100,6 +112,15 @@
    * Russian product name sets one word per line at 4.5rem.
    */
   --container-headline: 18ch;
+
+  /*
+   * The page's content column and the gutter beside it — what every centred
+   * `max-w-page px-page-gutter` block uses, and what a full-bleed row aligns
+   * its first item to. Written down because two things now have to agree on
+   * them: the column, and the rows that deliberately escape it.
+   */
+  --container-page: 72rem;
+  --spacing-page-gutter: 1.5rem;
 }
 
 /**

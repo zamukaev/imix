@@ -3,9 +3,11 @@ import { Inter } from 'next/font/google';
 import { notFound } from 'next/navigation';
 import { NextIntlClientProvider, hasLocale } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
+import { LOCALES, type Locale } from '@imix/types';
 import { CurrencyProvider } from '@/components/currency-provider';
 import { routing } from '@/i18n/routing';
 import { getRequestContext } from '@/lib/request-context';
+import { siteUrl } from '@/lib/seo';
 import '../globals.css';
 
 /**
@@ -36,13 +38,33 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: 'metadata' });
 
   return {
+    // Every relative URL in the tree below — canonicals, `hreflang`, OpenGraph
+    // images — is resolved against this. Without it Next guesses from the
+    // request, which is right in development and wrong behind any proxy.
+    metadataBase: siteUrl,
     title: {
       default: t('titleDefault'),
       template: t('titleTemplate', { page: '%s' }),
     },
     description: t('description'),
+    openGraph: {
+      type: 'website',
+      siteName: t('titleDefault'),
+      // Tells a crawler which language this rendering is in; the alternates on
+      // each page tell it where the others are.
+      locale: OG_LOCALES[locale],
+      alternateLocale: LOCALES.filter((other) => other !== locale).map(
+        (other) => OG_LOCALES[other],
+      ),
+    },
   };
 }
+
+/** OpenGraph wants a full territory tag, not the bare language code. */
+const OG_LOCALES: Record<Locale, string> = {
+  ru: 'ru_RU',
+  en: 'en_US',
+};
 
 /**
  * Note on rendering: reading the currency cookie here makes every page below

@@ -33,3 +33,6 @@ pnpm-debug.log*
 
 # test output
 coverage/
+
+# Uploads written by the local asset storage in development.
+apps/web/public/uploads/

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
 import { HealthModule } from './health/health.module';
@@ -13,6 +14,7 @@ import { ProductsModule } from './products/products.module';
     PrismaModule,
     HealthModule,
     AuthModule,
+    AdminModule,
     CategoriesModule,
     ProductsModule,
     HomeTilesModule,

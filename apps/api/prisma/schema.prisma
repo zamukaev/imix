@@ -64,10 +64,39 @@ model User {
 
 model Category {
   id       String    @id @default(cuid())
-  slug     String    @unique // "iphone", "macbook" — locale-independent
-  nameRu   String // "iPhone", "Ноутбуки"
-  nameEn   String // "iPhone", "Laptops"
+  slug     String    @unique // "iphone", "mac" — locale-independent
+  nameRu   String // "iPhone", "Аксессуары"
+  nameEn   String // "iPhone", "Accessories"
+  /// Order in the header. Alphabetical was fine while the sections were common
+  /// nouns; now that they are product lines it puts Watch before iPad and reads
+  /// as an accident. Not unique, and seeded in tens, for the same reasons as
+  /// `HomeTile.position` — ties break on `slug`.
+  position Int       @default(0)
   products Product[]
+  groups   ProductGroup[]
+}
+
+/// A tab on a category page — "Laptops", "Desktops", "Displays" under Mac.
+///
+/// One level, not a tree: this exists to split a line-up that is too broad to
+/// scan in one row, and a category that needs two levels of splitting is two
+/// categories. Optional on `Product`, because most lines have nothing to split —
+/// a category with fewer than two groups shows no tabs at all.
+model ProductGroup {
+  id         String    @id @default(cuid())
+  slug       String
+  nameRu     String
+  nameEn     String
+  /// Tab order, seeded in tens. Same reasoning as `Category.position`.
+  position   Int       @default(0)
+  categoryId String
+  category   Category  @relation(fields: [categoryId], references: [id])
+  products   Product[]
+
+  // Unique per category rather than globally: "displays" under Mac and a future
+  // "displays" under something else are different tabs.
+  @@unique([categoryId, slug])
+  @@index([categoryId, position])
 }
 
 model Product {
@@ -77,14 +106,28 @@ model Product {
   nameEn        String
   descriptionRu String
   descriptionEn String
+  /// One line for the model card on a category page. Nullable, and deliberately
+  /// not derived from `description`: a first sentence cut out of running text
+  /// was never written to stand on its own under a product name.
+  taglineRu     String?
+  taglineEn     String?
   brand         String // "Apple" — a brand name is not translated
   categoryId    String
   category      Category         @relation(fields: [categoryId], references: [id])
+  /// Which tab of the category page this model sits under. Null means it shows
+  /// under "all" only — which is every product in a category that has no tabs.
+  groupId       String?
+  group         ProductGroup?    @relation(fields: [groupId], references: [id])
   // Cheapest variant, denormalised for the catalogue grid. One column per
   // currency: see the header note — no rate, no conversion.
   basePriceRub  Int // minor units (копейки)
   basePriceUsd  Int // minor units (cents)
   images        String[]
+  /// The model's chip in the category page's nav rail — a small cutout on a
+  /// plain ground, which `images[0]` is not: a full-bleed marketing shot scaled
+  /// to 56px is a coloured square. Null falls back to `images[0]`, so a category
+  /// without cutouts still has a rail.
+  navImageUrl   String?
   model3dUrl    String? // .glb for R3F viewer (Phase 5)
   featured      Boolean          @default(false)
   variants      ProductVariant[]

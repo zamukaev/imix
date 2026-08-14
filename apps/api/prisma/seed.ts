@@ -64,35 +64,79 @@ type ProductSeed = {
   nameEn: string;
   descriptionRu: string;
   descriptionEn: string;
+  /**
+   * One line for the model card on the category page. Written here as a
+   * retailer who has handled the device — never lifted or paraphrased from the
+   * manufacturer's own marketing (see the hard constraints in CLAUDE.md).
+   */
+  taglineRu: string;
+  taglineEn: string;
   brand: string;
   basePriceRub: number;
   basePriceUsd: number;
   images: string[];
+  /** Cutout for the model rail; omitted where there is no artwork for one yet. */
+  navImageUrl?: string;
+  /** Tab of the category page, by slug. Omitted where the line has no tabs. */
+  group?: string;
   featured: boolean;
   variants: VariantSeed[];
+};
+
+type GroupSeed = {
+  slug: string;
+  nameRu: string;
+  nameEn: string;
+  position: number;
 };
 
 type CategorySeed = {
   slug: string;
   nameRu: string;
   nameEn: string;
+  /** Header order. Seeded in tens so a line can be inserted without renumbering. */
+  position: number;
 };
 
 /**
- * Slugs stay brand-neutral (`tablets`, not `ipad`) so a second manufacturer
- * needs no migration — see the note in ARCHITECTURE.md §2.
+ * The shop's sections, named after the product lines iMIX actually stocks.
+ *
+ * These were brand-neutral once (`phones`, `laptops`), on the theory that a
+ * second manufacturer would then need no migration. That theory cost more than
+ * it saved: a shopper looking for an iPhone reads "iPhone", and a section called
+ * "Smartphones" holding nothing but iPhones was a category in name only. If a
+ * second manufacturer ever arrives it gets its own sections, which is what a
+ * reseller's navigation looks like anyway.
+ *
+ * `Product.brand` still carries the manufacturer, and iMIX is still the brand
+ * around the whole thing — see the hard constraints in CLAUDE.md.
  */
 const categories: readonly CategorySeed[] = [
-  { slug: 'phones', nameRu: 'Смартфоны', nameEn: 'Smartphones' },
-  { slug: 'laptops', nameRu: 'Ноутбуки', nameEn: 'Laptops' },
-  { slug: 'tablets', nameRu: 'Планшеты', nameEn: 'Tablets' },
-  { slug: 'watches', nameRu: 'Часы', nameEn: 'Watches' },
-  { slug: 'audio', nameRu: 'Аудио', nameEn: 'Audio' },
-  { slug: 'accessories', nameRu: 'Аксессуары', nameEn: 'Accessories' },
+  { slug: 'mac', nameRu: 'Mac', nameEn: 'Mac', position: 10 },
+  { slug: 'ipad', nameRu: 'iPad', nameEn: 'iPad', position: 20 },
+  { slug: 'iphone', nameRu: 'iPhone', nameEn: 'iPhone', position: 30 },
+  { slug: 'watch', nameRu: 'Watch', nameEn: 'Watch', position: 40 },
+  { slug: 'airpods', nameRu: 'AirPods', nameEn: 'AirPods', position: 50 },
+  // AirTag is not one of the five lines, and dropping the product to make the
+  // list rounder would be the wrong way round. Last, as the catch-all.
+  { slug: 'accessories', nameRu: 'Аксессуары', nameEn: 'Accessories', position: 60 },
 ] as const;
 
+/**
+ * Tabs, by category slug. Only Mac has any: seven models spanning laptops,
+ * desktops and displays is more than one row can be scanned in, which is the
+ * only reason tabs exist. A category absent from here shows none.
+ */
+const groupsByCategory: Record<string, GroupSeed[]> = {
+  mac: [
+    { slug: 'laptops', nameRu: 'Ноутбуки', nameEn: 'Laptops', position: 10 },
+    { slug: 'desktops', nameRu: 'Компьютеры', nameEn: 'Desktops', position: 20 },
+    { slug: 'displays', nameRu: 'Мониторы', nameEn: 'Displays', position: 30 },
+  ],
+};
+
 const productsByCategory: Record<string, ProductSeed[]> = {
-  phones: [
+  iphone: [
     {
       slug: 'iphone-17-pro',
       nameRu: 'iPhone 17 Pro',
@@ -101,10 +145,13 @@ const productsByCategory: Record<string, ProductSeed[]> = {
         'Корпус из титана, дисплей ProMotion с частотой до 120 Гц и система из трёх камер с оптическим зумом. Чип последнего поколения держит нагрузку без перегрева, а батареи хватает на полный день съёмки.',
       descriptionEn:
         'A titanium body, a ProMotion display running up to 120 Hz, and a three-lens camera system with optical zoom. The latest-generation chip sustains load without throttling, and the battery lasts a full day of shooting.',
+      taglineRu: 'Титан, три камеры, полный съёмочный день.',
+      taglineEn: 'Titanium, three cameras, a full day of shooting.',
       brand: 'Apple',
       basePriceRub: rub(149990),
       basePriceUsd: usd(1099),
       images: ['/products/iphone-17-pro-1.jpg'],
+      navImageUrl: '/products/nav/iphone-17-pro.png',
       featured: true,
       variants: [
         {
@@ -140,6 +187,45 @@ const productsByCategory: Record<string, ProductSeed[]> = {
       ],
     },
     {
+      slug: 'iphone-air',
+      nameRu: 'iPhone Air',
+      nameEn: 'iPhone Air',
+      descriptionRu:
+        'Самый тонкий корпус в линейке — и при этом полноценный флагманский процессор. Одна камера вместо блока из трёх, зато аппарат почти не чувствуется в кармане и не оттягивает руку на долгом созвоне.',
+      descriptionEn:
+        'The thinnest body in the range, and a full flagship chip inside it. One camera instead of a block of three — in exchange the phone all but disappears in a pocket and does not weigh on your hand through a long call.',
+      taglineRu: 'Лёгкий и тонкий — заметно в первый же день.',
+      taglineEn: 'Light and thin — you notice it on day one.',
+      brand: 'Apple',
+      basePriceRub: rub(124990),
+      basePriceUsd: usd(999),
+      images: ['/products/iphone-air-1.jpg'],
+      navImageUrl: '/products/nav/iphone-air.png',
+      featured: false,
+      variants: [
+        {
+          sku: 'APL-IAIR-256-SKY',
+          labelRu: '256 ГБ · Небесно-голубой',
+          labelEn: '256GB · Sky Blue',
+          color: 'Sky Blue',
+          config: '256 GB',
+          priceRub: rub(124990),
+          priceUsd: usd(999),
+          stock: 9,
+        },
+        {
+          sku: 'APL-IAIR-512-SKY',
+          labelRu: '512 ГБ · Небесно-голубой',
+          labelEn: '512GB · Sky Blue',
+          color: 'Sky Blue',
+          config: '512 GB',
+          priceRub: rub(144990),
+          priceUsd: usd(1199),
+          stock: 4,
+        },
+      ],
+    },
+    {
       slug: 'iphone-17',
       nameRu: 'iPhone 17',
       nameEn: 'iPhone 17',
@@ -147,10 +233,13 @@ const productsByCategory: Record<string, ProductSeed[]> = {
         'Тот же процессор, что и в Pro, в более лёгком алюминиевом корпусе. Две камеры, автономность на весь день и обновления системы на годы вперёд.',
       descriptionEn:
         'The same silicon as the Pro in a lighter aluminium body. Dual camera, all-day battery life, and years of system updates ahead of it.',
+      taglineRu: 'Тот же процессор, что в Pro. Дешевле.',
+      taglineEn: 'The same silicon as the Pro. Less money.',
       brand: 'Apple',
       basePriceRub: rub(99990),
       basePriceUsd: usd(799),
       images: ['/products/iphone-17-1.jpg'],
+      navImageUrl: '/products/nav/iphone-17.png',
       featured: false,
       variants: [
         {
@@ -175,8 +264,86 @@ const productsByCategory: Record<string, ProductSeed[]> = {
         },
       ],
     },
+    {
+      slug: 'iphone-17e',
+      nameRu: 'iPhone 17e',
+      nameEn: 'iPhone 17e',
+      descriptionRu:
+        'Младшая модель поколения: тот же экран и та же камера для повседневных снимков, но без ProMotion и телеобъектива. Для тех, кому нужен свежий аппарат на несколько лет, а не максимум характеристик.',
+      descriptionEn:
+        'The entry model of the generation: the same screen and the same camera for everyday shots, without ProMotion or the telephoto lens. For anyone who wants a current phone for the next few years rather than the highest numbers.',
+      taglineRu: 'Всё нужное — и без переплаты.',
+      taglineEn: 'Everything you need, nothing you pay extra for.',
+      brand: 'Apple',
+      basePriceRub: rub(74990),
+      basePriceUsd: usd(599),
+      images: ['/products/iphone-17e-1.jpg'],
+      navImageUrl: '/products/nav/iphone-17e.png',
+      featured: false,
+      variants: [
+        {
+          sku: 'APL-I17E-128-PNK',
+          labelRu: '128 ГБ · Розовый',
+          labelEn: '128GB · Pink',
+          color: 'Pink',
+          config: '128 GB',
+          priceRub: rub(74990),
+          priceUsd: usd(599),
+          stock: 24,
+        },
+        {
+          sku: 'APL-I17E-256-PNK',
+          labelRu: '256 ГБ · Розовый',
+          labelEn: '256GB · Pink',
+          color: 'Pink',
+          config: '256 GB',
+          priceRub: rub(84990),
+          priceUsd: usd(699),
+          stock: 18,
+        },
+      ],
+    },
+    {
+      slug: 'iphone-16',
+      nameRu: 'iPhone 16',
+      nameEn: 'iPhone 16',
+      descriptionRu:
+        'Прошлое поколение, которое всё ещё получает обновления системы. Алюминиевый корпус, две камеры и честная цена: разницу с новым поколением большинство замечает только в характеристиках.',
+      descriptionEn:
+        'Last year’s generation, still on the system update list. An aluminium body, two cameras and an honest price: most people notice the gap to the current generation only on a spec sheet.',
+      taglineRu: 'Прошлое поколение по спокойной цене.',
+      taglineEn: 'Last year’s flagship at a calmer price.',
+      brand: 'Apple',
+      basePriceRub: rub(84990),
+      basePriceUsd: usd(699),
+      images: ['/products/iphone-16-1.jpg'],
+      navImageUrl: '/products/nav/iphone-16.png',
+      featured: false,
+      variants: [
+        {
+          sku: 'APL-I16-128-ULT',
+          labelRu: '128 ГБ · Ультрамарин',
+          labelEn: '128GB · Ultramarine',
+          color: 'Ultramarine',
+          config: '128 GB',
+          priceRub: rub(84990),
+          priceUsd: usd(699),
+          stock: 16,
+        },
+        {
+          sku: 'APL-I16-256-ULT',
+          labelRu: '256 ГБ · Ультрамарин',
+          labelEn: '256GB · Ultramarine',
+          color: 'Ultramarine',
+          config: '256 GB',
+          priceRub: rub(94990),
+          priceUsd: usd(799),
+          stock: 11,
+        },
+      ],
+    },
   ],
-  laptops: [
+  mac: [
     {
       slug: 'macbook-air-15-m5',
       nameRu: 'MacBook Air 15" M5',
@@ -185,10 +352,14 @@ const productsByCategory: Record<string, ProductSeed[]> = {
         'Полтора килограмма, полностью бесшумная работа без вентилятора и до восемнадцати часов автономности. Клавиатура, за которой можно писать книгу.',
       descriptionEn:
         'Under 1.6 kg, completely silent with no fan, and up to eighteen hours on a charge. A keyboard worth writing a book on.',
+      taglineRu: 'Тихий, лёгкий, работает весь день.',
+      taglineEn: 'Silent, light, lasts the whole working day.',
       brand: 'Apple',
       basePriceRub: rub(159990),
       basePriceUsd: usd(1199),
       images: ['/products/macbook-air-15-m5-1.jpg'],
+      navImageUrl: '/products/nav/macbook-air-15-m5.png',
+      group: 'laptops',
       featured: true,
       variants: [
         {
@@ -221,10 +392,14 @@ const productsByCategory: Record<string, ProductSeed[]> = {
         'Шестнадцать дюймов дисплея Liquid Retina XDR с точной цветопередачей и запасом по теплу, чтобы держать нагрузку долго. Для сборки проектов, цветокоррекции и всего, что нагружает все ядра сразу.',
       descriptionEn:
         'Sixteen inches of colour-accurate Liquid Retina XDR with the thermal headroom to sustain it. For compiling, colour grading and anything else that pins every core.',
+      taglineRu: 'Для монтажа и сборок, а не для почты.',
+      taglineEn: 'For renders and builds, not for email.',
       brand: 'Apple',
       basePriceRub: rub(279990),
       basePriceUsd: usd(2499),
       images: ['/products/macbook-pro-16-m5-1.jpg'],
+      navImageUrl: '/products/nav/macbook-pro-16-m5-pro.png',
+      group: 'laptops',
       featured: false,
       variants: [
         {
@@ -249,8 +424,210 @@ const productsByCategory: Record<string, ProductSeed[]> = {
         },
       ],
     },
+
+    {
+      slug: 'imac-24-m5',
+      nameRu: 'iMac 24" M5',
+      nameEn: 'iMac 24" M5',
+      descriptionRu:
+        'Моноблок толщиной с планшет: весь компьютер живёт за экраном, на столе остаётся один кабель. Экран 4,5K с честной цветопередачей, клавиатура и мышь в цвет корпуса идут в комплекте.',
+      descriptionEn:
+        'An all-in-one no thicker than a tablet: the whole computer lives behind the screen and one cable reaches the desk. A 4.5K display with honest colour, and a colour-matched keyboard and mouse in the box.',
+      taglineRu: 'Весь компьютер — за экраном.',
+      taglineEn: 'The whole computer, behind the screen.',
+      brand: 'Apple',
+      basePriceRub: rub(139990),
+      basePriceUsd: usd(1299),
+      images: ['/products/imac-24-m5-1.jpg'],
+      navImageUrl: '/products/nav/imac-24-m5.png',
+      group: 'desktops',
+      featured: false,
+      variants: [
+        {
+          sku: 'APL-IMAC24-16-256-BLU',
+          labelRu: '16 ГБ · 256 ГБ · Синий',
+          labelEn: '16GB · 256GB · Blue',
+          color: 'Blue',
+          config: '16 GB / 256 GB',
+          priceRub: rub(139990),
+          priceUsd: usd(1299),
+          stock: 6,
+        },
+        {
+          sku: 'APL-IMAC24-24-512-BLU',
+          labelRu: '24 ГБ · 512 ГБ · Синий',
+          labelEn: '24GB · 512GB · Blue',
+          color: 'Blue',
+          config: '24 GB / 512 GB',
+          priceRub: rub(169990),
+          priceUsd: usd(1599),
+          stock: 3,
+        },
+      ],
+    },
+    {
+      slug: 'mac-mini-m5',
+      nameRu: 'Mac mini M5',
+      nameEn: 'Mac mini M5',
+      descriptionRu:
+        'Самый доступный способ перейти на macOS: коробка размером с книгу, к которой подключается ваш монитор и ваша клавиатура. Тихий под нагрузкой и почти не занимает места на столе.',
+      descriptionEn:
+        'The cheapest way onto macOS: a box the size of a book that takes the monitor and keyboard you already own. Quiet under load, and it barely occupies the desk.',
+      taglineRu: 'Приносите свой монитор.',
+      taglineEn: 'Bring your own monitor.',
+      brand: 'Apple',
+      basePriceRub: rub(64990),
+      basePriceUsd: usd(599),
+      images: ['/products/mac-mini-m5-1.jpg'],
+      navImageUrl: '/products/nav/mac-mini-m5.png',
+      group: 'desktops',
+      featured: false,
+      variants: [
+        {
+          sku: 'APL-MINI-16-256',
+          labelRu: '16 ГБ · 256 ГБ',
+          labelEn: '16GB · 256GB',
+          color: null,
+          config: '16 GB / 256 GB',
+          priceRub: rub(64990),
+          priceUsd: usd(599),
+          stock: 14,
+        },
+        {
+          sku: 'APL-MINI-24-512',
+          labelRu: '24 ГБ · 512 ГБ',
+          labelEn: '24GB · 512GB',
+          color: null,
+          config: '24 GB / 512 GB',
+          priceRub: rub(89990),
+          priceUsd: usd(799),
+          stock: 8,
+        },
+      ],
+    },
+    {
+      slug: 'mac-studio-m5-max',
+      nameRu: 'Mac Studio M5 Max',
+      nameEn: 'Mac Studio M5 Max',
+      descriptionRu:
+        'Рабочая станция для монтажа, 3D и больших сборок. Порты вынесены и назад, и вперёд, так что кардридер и накопитель не приходится искать за корпусом.',
+      descriptionEn:
+        'A workstation for editing, 3D and long builds. Ports on the front as well as the back, so a card reader and a drive are not something you reach behind the machine for.',
+      taglineRu: 'Рендер идёт — вентилятора не слышно.',
+      taglineEn: 'It renders without making a noise about it.',
+      brand: 'Apple',
+      basePriceRub: rub(259990),
+      basePriceUsd: usd(2299),
+      images: ['/products/mac-studio-m5-max-1.jpg'],
+      navImageUrl: '/products/nav/mac-studio-m5-max.png',
+      group: 'desktops',
+      featured: false,
+      variants: [
+        {
+          sku: 'APL-STUDIO-36-512',
+          labelRu: '36 ГБ · 512 ГБ',
+          labelEn: '36GB · 512GB',
+          color: null,
+          config: '36 GB / 512 GB',
+          priceRub: rub(259990),
+          priceUsd: usd(2299),
+          stock: 4,
+        },
+        {
+          sku: 'APL-STUDIO-48-1TB',
+          labelRu: '48 ГБ · 1 ТБ',
+          labelEn: '48GB · 1TB',
+          color: null,
+          config: '48 GB / 1 TB',
+          priceRub: rub(319990),
+          priceUsd: usd(2899),
+          stock: 2,
+        },
+      ],
+    },
+
+    {
+      slug: 'studio-display-27',
+      nameRu: 'Studio Display 27"',
+      nameEn: 'Studio Display 27"',
+      descriptionRu:
+        'Экран 5K, в который встроены камера, микрофоны и колонки — на столе остаётся один кабель, он же питает ноутбук. Подставку и покрытие выбирают при заказе, поменять их потом нельзя.',
+      descriptionEn:
+        'A 5K screen with the camera, microphones and speakers already inside it — one cable on the desk, and it charges the laptop too. Stand and coating are chosen at order time and cannot be swapped later.',
+      taglineRu: 'Один кабель до ноутбука.',
+      taglineEn: 'One cable to the laptop.',
+      brand: 'Apple',
+      basePriceRub: rub(169990),
+      basePriceUsd: usd(1599),
+      images: ['/products/studio-display-27-1.jpg'],
+      navImageUrl: '/products/nav/studio-display-27.png',
+      group: 'displays',
+      featured: false,
+      variants: [
+        {
+          sku: 'APL-SD27-STD-TILT',
+          labelRu: 'Стандартное стекло · наклонная подставка',
+          labelEn: 'Standard glass · tilt stand',
+          color: null,
+          config: 'Standard glass',
+          priceRub: rub(169990),
+          priceUsd: usd(1599),
+          stock: 5,
+        },
+        {
+          sku: 'APL-SD27-NANO-TILT',
+          labelRu: 'Нанотекстурное стекло · наклонная подставка',
+          labelEn: 'Nano-texture glass · tilt stand',
+          color: null,
+          config: 'Nano-texture glass',
+          priceRub: rub(199990),
+          priceUsd: usd(1899),
+          stock: 2,
+        },
+      ],
+    },
+    {
+      slug: 'studio-display-xdr-32',
+      nameRu: 'Studio Display XDR 32"',
+      nameEn: 'Studio Display XDR 32"',
+      descriptionRu:
+        'Референсный монитор 6K для цветокоррекции: держит яркость на всей площади экрана и не уводит цвет за смену. Берут те, кому картинку потом сдавать заказчику.',
+      descriptionEn:
+        'A 6K reference monitor for grading: it holds brightness across the whole panel and does not drift over a shift. Bought by people who have to hand the picture to a client afterwards.',
+      taglineRu: 'Для тех, кто сдаёт цвет заказчику.',
+      taglineEn: 'For work that gets signed off on colour.',
+      brand: 'Apple',
+      basePriceRub: rub(549990),
+      basePriceUsd: usd(4999),
+      images: ['/products/studio-display-xdr-32-1.jpg'],
+      navImageUrl: '/products/nav/studio-display-xdr-32.png',
+      group: 'displays',
+      featured: false,
+      variants: [
+        {
+          sku: 'APL-SDXDR32-STD',
+          labelRu: 'Стандартное стекло',
+          labelEn: 'Standard glass',
+          color: null,
+          config: 'Standard glass',
+          priceRub: rub(549990),
+          priceUsd: usd(4999),
+          stock: 2,
+        },
+        {
+          sku: 'APL-SDXDR32-NANO',
+          labelRu: 'Нанотекстурное стекло',
+          labelEn: 'Nano-texture glass',
+          color: null,
+          config: 'Nano-texture glass',
+          priceRub: rub(609990),
+          priceUsd: usd(5599),
+          stock: 1,
+        },
+      ],
+    },
   ],
-  tablets: [
+  ipad: [
     {
       slug: 'ipad-air-13-m4',
       nameRu: 'iPad Air 13" M4',
@@ -259,10 +636,13 @@ const productsByCategory: Record<string, ProductSeed[]> = {
         'Планшет, который чаще заменяет ноутбук, чем ожидаешь: тонкий корпус, тихая работа без вентилятора и полный день автономности. С клавиатурой превращается в рабочее место.',
       descriptionEn:
         'The tablet that replaces a laptop more often than you expect: thin, fanless, silent, and good for a full day away from a socket. Add a keyboard and it becomes a desk.',
+      taglineRu: 'Большой экран, а вес как у книги.',
+      taglineEn: 'A big screen that weighs like a book.',
       brand: 'Apple',
       basePriceRub: rub(99990),
       basePriceUsd: usd(799),
-      images: ['/products/ipad-air-13-m4-1.jpg'],
+      images: ['/products/ipad-air-13-m4-1.png'],
+      navImageUrl: '/products/nav/ipad-air-13-m4.png',
       featured: false,
       variants: [
         {
@@ -305,10 +685,13 @@ const productsByCategory: Record<string, ProductSeed[]> = {
         'Дисплей, ради которого стоит посмотреть на планшет вблизи, и запас производительности для монтажа и графики. Самый тонкий корпус, который Apple делала.',
       descriptionEn:
         'A display worth looking at from close up, and enough headroom for editing and graphics work. The thinnest body Apple has built.',
+      taglineRu: 'Планшет, который заменяет ноутбук.',
+      taglineEn: 'The tablet that stands in for a laptop.',
       brand: 'Apple',
       basePriceRub: rub(179990),
       basePriceUsd: usd(1299),
-      images: ['/products/ipad-pro-13-m5-1.jpg'],
+      images: ['/products/ipad-pro-13-m5-1.png'],
+      navImageUrl: '/products/nav/ipad-pro-13-m5.png',
       featured: true,
       variants: [
         {
@@ -333,8 +716,86 @@ const productsByCategory: Record<string, ProductSeed[]> = {
         },
       ],
     },
+    {
+      slug: 'ipad-11-a18',
+      nameRu: 'iPad 11" A18',
+      nameEn: 'iPad 11" A18',
+      descriptionRu:
+        'Базовый планшет, которого хватает большинству: сериалы, заметки, браузер и рисование. Тот же корпус и тот же разъём, что у старших моделей, но заметно дешевле.',
+      descriptionEn:
+        'The entry tablet that covers what most people actually do: video, notes, a browser and drawing. The same body and the same port as its bigger siblings, for noticeably less.',
+      taglineRu: 'Планшет без лишнего — и без переплаты.',
+      taglineEn: 'The tablet most people actually need.',
+      brand: 'Apple',
+      basePriceRub: rub(39990),
+      basePriceUsd: usd(349),
+      images: ['/products/ipad-11-a18-1.png'],
+      navImageUrl: '/products/nav/ipad-11-a18.png',
+      featured: false,
+      variants: [
+        {
+          sku: 'APL-IPAD11-128-SLV',
+          labelRu: '128 ГБ · Серебристый',
+          labelEn: '128GB · Silver',
+          color: 'Silver',
+          config: '128 GB · Wi-Fi',
+          priceRub: rub(39990),
+          priceUsd: usd(349),
+          stock: 22,
+        },
+        {
+          sku: 'APL-IPAD11-256-SLV',
+          labelRu: '256 ГБ · Серебристый',
+          labelEn: '256GB · Silver',
+          color: 'Silver',
+          config: '256 GB · Wi-Fi',
+          priceRub: rub(49990),
+          priceUsd: usd(449),
+          stock: 14,
+        },
+      ],
+    },
+    {
+      slug: 'ipad-mini-a18-pro',
+      nameRu: 'iPad mini A18 Pro',
+      nameEn: 'iPad mini A18 Pro',
+      descriptionRu:
+        'Помещается в карман куртки и держится одной рукой — при этом внутри процессор уровня телефона-флагмана. Берут в дорогу, за руль и для чтения.',
+      descriptionEn:
+        'Fits a jacket pocket and holds in one hand, with flagship-phone silicon inside it. Bought for travelling, for the car, and for reading.',
+      taglineRu: 'Держится одной рукой.',
+      taglineEn: 'Holds in one hand.',
+      brand: 'Apple',
+      basePriceRub: rub(54990),
+      basePriceUsd: usd(499),
+      images: ['/products/ipad-mini-a18-pro-1.png'],
+      navImageUrl: '/products/nav/ipad-mini-a18-pro.png',
+      featured: false,
+      variants: [
+        {
+          sku: 'APL-IPADMINI-128-PRP',
+          labelRu: '128 ГБ · Фиолетовый',
+          labelEn: '128GB · Purple',
+          color: 'Purple',
+          config: '128 GB · Wi-Fi',
+          priceRub: rub(54990),
+          priceUsd: usd(499),
+          stock: 11,
+        },
+        {
+          sku: 'APL-IPADMINI-256-PRP',
+          labelRu: '256 ГБ · Фиолетовый',
+          labelEn: '256GB · Purple',
+          color: 'Purple',
+          config: '256 GB · Wi-Fi',
+          priceRub: rub(64990),
+          priceUsd: usd(599),
+          stock: 7,
+        },
+      ],
+    },
   ],
-  watches: [
+  watch: [
     {
       slug: 'apple-watch-series-11',
       nameRu: 'Apple Watch Series 11',
@@ -343,10 +804,13 @@ const productsByCategory: Record<string, ProductSeed[]> = {
         'Сон, пульс и тренировки в одном месте — и заряда хватает так, что зарядка перестаёт быть ежевечерним ритуалом. Экран читается на солнце не хуже бумаги.',
       descriptionEn:
         'Sleep, heart rate and training in one place — and enough battery that charging stops being a nightly ritual. The screen reads in sunlight like paper.',
+      taglineRu: 'Шаги, пульс и сон — без лишней возни.',
+      taglineEn: 'Steps, pulse and sleep, with no fuss.',
       brand: 'Apple',
       basePriceRub: rub(44990),
       basePriceUsd: usd(429),
-      images: ['/products/apple-watch-series-11-1.jpg'],
+      images: ['/products/apple-watch-series-11-1.png'],
+      navImageUrl: '/products/nav/apple-watch-series-11.svg',
       featured: false,
       variants: [
         {
@@ -381,8 +845,86 @@ const productsByCategory: Record<string, ProductSeed[]> = {
         },
       ],
     },
+    {
+      slug: 'apple-watch-se-3',
+      nameRu: 'Apple Watch SE 3',
+      nameEn: 'Apple Watch SE 3',
+      descriptionRu:
+        'Всё, ради чего часы обычно и покупают: уведомления, тренировки, пульс и оплата с запястья. Без датчиков, которыми большинство всё равно не пользуется, и заметно дешевле.',
+      descriptionEn:
+        'Everything people actually buy a watch for: notifications, workouts, heart rate and paying from the wrist. Without the sensors most owners never open, and for noticeably less.',
+      taglineRu: 'Главное — и ничего сверх.',
+      taglineEn: 'The parts you will actually use.',
+      brand: 'Apple',
+      basePriceRub: rub(27990),
+      basePriceUsd: usd(249),
+      images: ['/products/apple-watch-se-3-1.png'],
+      navImageUrl: '/products/nav/apple-watch-se-3.svg',
+      featured: false,
+      variants: [
+        {
+          sku: 'APL-AWSE3-40-ALU-MID',
+          labelRu: '40 мм · Алюминий · Тёмная ночь',
+          labelEn: '40mm · Aluminium · Midnight',
+          color: 'Midnight',
+          config: '40 mm · GPS',
+          priceRub: rub(27990),
+          priceUsd: usd(249),
+          stock: 18,
+        },
+        {
+          sku: 'APL-AWSE3-44-ALU-MID',
+          labelRu: '44 мм · Алюминий · Тёмная ночь',
+          labelEn: '44mm · Aluminium · Midnight',
+          color: 'Midnight',
+          config: '44 mm · GPS',
+          priceRub: rub(31990),
+          priceUsd: usd(279),
+          stock: 12,
+        },
+      ],
+    },
+    {
+      slug: 'apple-watch-ultra-3',
+      nameRu: 'Apple Watch Ultra 3',
+      nameEn: 'Apple Watch Ultra 3',
+      descriptionRu:
+        'Титановый корпус, самый яркий экран в линейке и автономность на несколько суток. Для гор, воды и длинных дистанций — там, где обычные часы просят зарядку на середине маршрута.',
+      descriptionEn:
+        'A titanium case, the brightest screen in the range, and battery measured in days rather than hours. For mountains, water and long distances — where an ordinary watch asks for a charger halfway.',
+      taglineRu: 'Заряда хватает на весь маршрут.',
+      taglineEn: 'Lasts the whole route, not half of it.',
+      brand: 'Apple',
+      basePriceRub: rub(94990),
+      basePriceUsd: usd(799),
+      images: ['/products/apple-watch-ultra-3-1.png'],
+      navImageUrl: '/products/nav/apple-watch-ultra-3.svg',
+      featured: false,
+      variants: [
+        {
+          sku: 'APL-AWU3-49-TIT-NAT',
+          labelRu: '49 мм · Титан · Натуральный',
+          labelEn: '49mm · Titanium · Natural',
+          color: 'Natural Titanium',
+          config: '49 mm · GPS + Cellular',
+          priceRub: rub(94990),
+          priceUsd: usd(799),
+          stock: 5,
+        },
+        {
+          sku: 'APL-AWU3-49-TIT-BLK',
+          labelRu: '49 мм · Титан · Чёрный',
+          labelEn: '49mm · Titanium · Black',
+          color: 'Black Titanium',
+          config: '49 mm · GPS + Cellular',
+          priceRub: rub(99990),
+          priceUsd: usd(849),
+          stock: 3,
+        },
+      ],
+    },
   ],
-  audio: [
+  airpods: [
     {
       slug: 'airpods-pro-3',
       nameRu: 'AirPods Pro 3',
@@ -391,6 +933,8 @@ const productsByCategory: Record<string, ProductSeed[]> = {
         'Шумоподавление, которое слышно в первую секунду в метро. Режим прозрачности звучит настолько естественно, что наушники можно не вынимать.',
       descriptionEn:
         'Noise cancelling you notice in the first second on a metro platform. Transparency mode sounds natural enough that you can leave them in.',
+      taglineRu: 'Шумоподавление, которое слышно в метро.',
+      taglineEn: 'Noise cancelling you notice on the metro.',
       brand: 'Apple',
       basePriceRub: rub(24990),
       basePriceUsd: usd(249),
@@ -419,6 +963,8 @@ const productsByCategory: Record<string, ProductSeed[]> = {
         'Метка размером с монету для ключей, рюкзака или чемодана. Находится точным поиском на расстоянии вытянутой руки, батарейка меняется сама, без сервиса.',
       descriptionEn:
         'A coin-sized tracker for keys, a backpack or a suitcase. Precision finding walks you the last few metres, and the battery is one you swap yourself.',
+      taglineRu: 'Ключи, сумка, чемодан — всё на карте.',
+      taglineEn: 'Keys, bag, suitcase — all on one map.',
       brand: 'Apple',
       basePriceRub: rub(3490),
       basePriceUsd: usd(29),
@@ -498,7 +1044,7 @@ const homeTiles: readonly HomeTileSeed[] = [
     primaryHref: '/product/iphone-17-pro',
     secondaryLabelRu: 'Все смартфоны',
     secondaryLabelEn: 'All phones',
-    secondaryHref: '/phones',
+    secondaryHref: '/iphone',
   },
   {
     key: 'hero-macbook-air',
@@ -516,7 +1062,7 @@ const homeTiles: readonly HomeTileSeed[] = [
     primaryHref: '/product/macbook-air-15-m5',
     secondaryLabelRu: 'Все ноутбуки',
     secondaryLabelEn: 'All laptops',
-    secondaryHref: '/laptops',
+    secondaryHref: '/mac',
   },
   {
     key: 'promo-iphone',
@@ -565,7 +1111,7 @@ const homeTiles: readonly HomeTileSeed[] = [
     primaryHref: '/product/ipad-air-13-m4',
     secondaryLabelRu: 'Все планшеты',
     secondaryLabelEn: 'All tablets',
-    secondaryHref: '/tablets',
+    secondaryHref: '/ipad',
   },
   {
     key: 'promo-watch',
@@ -660,13 +1206,35 @@ async function main(): Promise<void> {
       create: { slug, ...names },
     });
 
+    // Tabs before products, because a product references one by id.
+    const groupIds = new Map<string, string>();
+
+    for (const group of groupsByCategory[slug] ?? []) {
+      const { slug: groupSlug, ...groupData } = group;
+
+      const savedGroup = await prisma.productGroup.upsert({
+        where: { categoryId_slug: { categoryId: saved.id, slug: groupSlug } },
+        update: groupData,
+        create: { slug: groupSlug, ...groupData, categoryId: saved.id },
+      });
+
+      groupIds.set(groupSlug, savedGroup.id);
+    }
+
     for (const product of productsByCategory[slug] ?? []) {
-      const { variants, ...productData } = product;
+      const { variants, group, ...productData } = product;
+      const groupId = group === undefined ? null : (groupIds.get(group) ?? null);
+
+      if (group !== undefined && groupId === null) {
+        throw new Error(
+          `Product "${product.slug}" names group "${group}", which "${slug}" does not have.`,
+        );
+      }
 
       const savedProduct = await prisma.product.upsert({
         where: { slug: product.slug },
-        update: { ...productData, categoryId: saved.id },
-        create: { ...productData, categoryId: saved.id },
+        update: { ...productData, categoryId: saved.id, groupId },
+        create: { ...productData, categoryId: saved.id, groupId },
       });
 
       for (const variant of variants) {

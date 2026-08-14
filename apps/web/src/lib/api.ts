@@ -1,4 +1,12 @@
+import { DEFAULT_LOCALE } from '@imix/types';
 import type {
+  AdminCategoryDto,
+  AdminHomeTileDto,
+  AdminOrderDto,
+  AdminOrderListQuery,
+  AdminProductDto,
+  AdminProductListItemDto,
+  AdminStatsDto,
   ApiError,
   AuthResponse,
   CategoryDto,
@@ -244,6 +252,84 @@ export function getMe(auth: Authorization): Promise<UserDto> {
 }
 
 /**
+ * The admin dashboard's numbers. Never cached: a dashboard showing figures from
+ * a minute ago is a dashboard nobody can act on.
+ *
+ * No locale and no currency in the query — the response carries no text, and it
+ * reports money once per currency rather than picking one.
+ */
+export function getAdminStats(auth: Authorization): Promise<AdminStatsDto> {
+  return apiFetch<AdminStatsDto>('/admin/stats', {
+    headers: authHeader(auth),
+    cache: 'no-store',
+  });
+}
+
+/**
+ * The admin's catalogue reads, for the Server Components that render the lists
+ * and fill the edit form. Both languages and both prices, never cached.
+ *
+ * The matching *writes* live in `admin-api.ts` and go through this app's own
+ * route handler, because the forms doing them are client components.
+ */
+export function getAdminProducts(
+  auth: Authorization,
+): Promise<AdminProductListItemDto[]> {
+  return apiFetch<AdminProductListItemDto[]>('/admin/products', {
+    headers: authHeader(auth),
+    cache: 'no-store',
+  });
+}
+
+export function getAdminProduct(
+  id: string,
+  auth: Authorization,
+): Promise<AdminProductDto> {
+  return apiFetch<AdminProductDto>(`/admin/products/${encodeURIComponent(id)}`, {
+    headers: authHeader(auth),
+    cache: 'no-store',
+  });
+}
+
+export function getAdminCategories(
+  auth: Authorization,
+): Promise<AdminCategoryDto[]> {
+  return apiFetch<AdminCategoryDto[]>('/admin/categories', {
+    headers: authHeader(auth),
+    cache: 'no-store',
+  });
+}
+
+/** Every home tile, drafts included — the admin owns the unpublished ones too. */
+export function getAdminHomeTiles(
+  auth: Authorization,
+): Promise<AdminHomeTileDto[]> {
+  return apiFetch<AdminHomeTileDto[]>('/admin/home-tiles', {
+    headers: authHeader(auth),
+    cache: 'no-store',
+  });
+}
+
+/**
+ * The order book. The locale travels with it because the lines carry product
+ * names, which are stored per language.
+ */
+export function getAdminOrders(
+  auth: Authorization,
+  query: AdminOrderListQuery,
+): Promise<Paginated<AdminOrderDto>> {
+  const params = new URLSearchParams({ locale: query.locale ?? DEFAULT_LOCALE });
+
+  if (query.status) params.set('status', query.status);
+  if (query.page !== undefined) params.set('page', String(query.page));
+
+  return apiFetch<Paginated<AdminOrderDto>>(`/admin/orders?${params}`, {
+    headers: authHeader(auth),
+    cache: 'no-store',
+  });
+}
+
+/**
  * The order id is the only credential the confirmation page has, so this must
  * not be cached — a shopper reloading after payment needs the settled status.
  */
@@ -251,6 +337,28 @@ export function getOrder(id: string, context: LocaleContext): Promise<OrderDto> 
   const params = new URLSearchParams({ locale: context.locale });
 
   return apiFetch<OrderDto>(`/orders/${encodeURIComponent(id)}?${params}`, {
+    cache: 'no-store',
+  });
+}
+
+/**
+ * The signed-in shopper's own orders, newest first.
+ *
+ * Never cached, for the same reason as `getOrder`: a status is the one thing on
+ * this list that moves, and a page showing yesterday's is a page that lies.
+ *
+ * Orders placed without signing in are deliberately absent — they are matched
+ * by `userId`, not by email address. Matching on email would hand somebody's
+ * purchase history to whoever registers with it next.
+ */
+export function getMyOrders(
+  auth: Authorization,
+  context: LocaleContext,
+): Promise<OrderDto[]> {
+  const params = new URLSearchParams({ locale: context.locale });
+
+  return apiFetch<OrderDto[]>(`/orders/me?${params}`, {
+    headers: authHeader(auth),
     cache: 'no-store',
   });
 }

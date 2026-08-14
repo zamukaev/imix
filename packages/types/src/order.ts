@@ -7,8 +7,22 @@ import type { Currency, LocalisedQuery, Money } from './common';
  */
 export const MAX_ORDER_ITEM_QUANTITY = 10;
 
-/** Lifecycle of an order. Mirrors the `OrderStatus` enum in the Prisma schema. */
-export type OrderStatus = 'PENDING' | 'PAID' | 'FAILED' | 'SHIPPED' | 'CANCELLED';
+/**
+ * Lifecycle of an order. Mirrors the `OrderStatus` enum in the Prisma schema.
+ *
+ * A list rather than a bare union because the admin has to *enumerate* them:
+ * a dashboard showing only the statuses that happen to have orders in them
+ * hides the fact that nothing has shipped yet.
+ */
+export const ORDER_STATUSES = [
+  'PENDING',
+  'PAID',
+  'FAILED',
+  'SHIPPED',
+  'CANCELLED',
+] as const;
+
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 /** Where the parcel goes. Flat on purpose — one order, one destination. */
 export type ShippingAddressDto = {

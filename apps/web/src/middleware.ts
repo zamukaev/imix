@@ -1,6 +1,13 @@
-import type { NextRequest, NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import createMiddleware from 'next-intl/middleware';
 import { refreshTokens } from '@/lib/api';
+import {
+  LOGIN_PATH,
+  RETURN_TO_PARAM,
+  isAccountPath,
+  isAdminPath,
+  splitLocale,
+} from '@/lib/session-routes';
 import {
   ACCESS_COOKIE,
   REFRESH_COOKIE,
@@ -13,29 +20,71 @@ import { routing } from './i18n/routing';
 const handleLocale = createMiddleware(routing);
 
 /**
- * Two jobs, in this order: put the request on the right locale, then keep the
- * session alive.
+ * Three jobs, in this order: renew the session, decide whether the visitor may
+ * see `/admin` at all, then put the request on the right locale.
  *
- * Renewing here rather than in a layout is not a preference — a Server
- * Component cannot set a cookie. Without this, an access token would age out
- * after fifteen minutes and the header would show a signed-in shopper as
- * signed out while their session was still perfectly good.
+ * Renewing first is not a preference — a Server Component cannot set a cookie,
+ * so there is nowhere else to do it, and an admin whose access token aged out
+ * mid-session would otherwise be bounced to the login form holding a perfectly
+ * good session. It also means the gate below judges the *renewed* token.
  *
- * The role gate for `/admin` slots in next to this in Phase 3.2. It belongs
- * here for the redirect only: the API enforces the role on every request of its
- * own (ARCHITECTURE.md §4).
+ * The gate is about which page somebody sees, and nothing more. The API guards
+ * `/admin/*` with its own role check on every request (ARCHITECTURE.md §4) —
+ * getting past this one buys an empty shell whose every fetch answers 403.
  */
 export default async function middleware(request: NextRequest): Promise<NextResponse> {
-  // Renewed before the locale handler builds the response, and written back
-  // onto the *request* as well as the response: that way the page being
-  // rendered right now already sees the new token, instead of one render still
-  // believing the shopper is signed out.
+  // Written back onto the *request* as well as the response, so the page being
+  // rendered right now already sees the new token instead of one render still
+  // believing the visitor is signed out.
   const renewed = await slideSession(request);
-  const response = handleLocale(request);
+  const response = guardPrivate(request) ?? handleLocale(request);
 
+  // Applied last, and to whichever response won: a redirect that dropped the
+  // freshly issued cookies would send the visitor back round the same loop.
   renewed?.(response);
 
   return response;
+}
+
+/**
+ * Keeps everyone but an admin out of `/admin`, and everyone signed out of
+ * `/account`.
+ *
+ * Two gates, one shape: each names what it needs of the session, and a request
+ * that satisfies it passes through untouched.
+ *
+ * The two refusals are different on purpose. Nobody signed in is sent to the
+ * login form with a way back; somebody signed in as a shopper is sent home,
+ * because asking them to sign in again would be a loop — they are already who
+ * they are, and it is not enough. That second case cannot arise on `/account`,
+ * where being signed in *is* the requirement.
+ */
+function guardPrivate(request: NextRequest): NextResponse | null {
+  const { pathname } = request.nextUrl;
+  const claims = readSessionClaims(request.cookies.get(ACCESS_COOKIE)?.value);
+
+  const admitted = isAdminPath(pathname)
+    ? claims?.role === 'ADMIN'
+    : isAccountPath(pathname)
+      ? Boolean(claims)
+      : // A public page: nothing to decide.
+        true;
+
+  if (admitted) {
+    return null;
+  }
+
+  const { prefix } = splitLocale(pathname);
+  const destination = new URL(claims ? prefix || '/' : `${prefix}${LOGIN_PATH}`, request.url);
+
+  if (!claims) {
+    destination.searchParams.set(
+      RETURN_TO_PARAM,
+      `${pathname}${request.nextUrl.search}`,
+    );
+  }
+
+  return NextResponse.redirect(destination);
 }
 
 /**

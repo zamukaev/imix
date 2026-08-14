@@ -84,6 +84,28 @@ export function formatDateTime(isoDate: string, locale: Locale): string {
   return dateFormatter(locale).format(new Date(isoDate));
 }
 
+const dayFormatters = new Map<Locale, Intl.DateTimeFormat>();
+
+/**
+ * The same instant without the clock. `9 августа 2026 г.`
+ *
+ * For dates where the time of day carries nothing — when an account was opened,
+ * not when an order was placed. Printing "at 11:39 PM" next to a signup year is
+ * precision nobody asked for.
+ */
+export function formatDate(isoDate: string, locale: Locale): string {
+  const cached = dayFormatters.get(locale);
+  const formatter =
+    cached ??
+    new Intl.DateTimeFormat(INTL_LOCALES[locale], { dateStyle: 'long' });
+
+  if (!cached) {
+    dayFormatters.set(locale, formatter);
+  }
+
+  return formatter.format(new Date(isoDate));
+}
+
 function regionDisplayNames(locale: Locale): Intl.DisplayNames {
   const cached = regionNames.get(locale);
 

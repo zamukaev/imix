@@ -6,10 +6,14 @@ import {
 } from '@nestjs/common';
 import {
   DEFAULT_LOCALE,
+  canTransition,
+  type AdminOrderDto,
   type Locale,
   type Money,
   type OrderDto,
   type OrderItemDto,
+  type OrderStatus,
+  type Paginated,
 } from '@imix/types';
 import { Prisma } from '@prisma/client';
 import { amount, text } from '../common/localisation';
@@ -18,6 +22,11 @@ import {
   CreateOrderDto,
   CreateOrderItemInputDto,
 } from './dto/create-order.dto';
+import {
+  DEFAULT_ADMIN_PAGE,
+  DEFAULT_ADMIN_PAGE_SIZE,
+  FindAdminOrdersQueryDto,
+} from './dto/find-admin-orders-query.dto';
 
 /**
  * Everything an order response needs. Product fields are joined through the
@@ -27,6 +36,7 @@ const orderSelect = {
   id: true,
   status: true,
   email: true,
+  userId: true,
   total: true,
   currency: true,
   createdAt: true,
@@ -194,6 +204,125 @@ export class OrdersService {
     return orders.map((order) => toOrderDto(order, locale));
   }
 
+  /**
+   * The admin's order book: newest first, optionally narrowed to one status.
+   *
+   * Deliberately the same rows and the same mapper the shopper's confirmation
+   * page uses, with `userId` added. A second projection would be a second thing
+   * to keep in step, and the one number that must not drift — `total` next to
+   * its `currency` — is exactly the one both sides print.
+   */
+  async findForAdmin(
+    query: FindAdminOrdersQueryDto,
+  ): Promise<Paginated<AdminOrderDto>> {
+    const page = query.page ?? DEFAULT_ADMIN_PAGE;
+    const pageSize = query.pageSize ?? DEFAULT_ADMIN_PAGE_SIZE;
+    const locale = query.locale ?? DEFAULT_LOCALE;
+    const where: Prisma.OrderWhereInput = query.status
+      ? { status: query.status }
+      : {};
+
+    const [orders, total] = await this.prisma.$transaction([
+      this.prisma.order.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        select: orderSelect,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+
+    return {
+      items: orders.map((order) => toAdminOrderDto(order, locale)),
+      page,
+      pageSize,
+      total,
+    };
+  }
+
+  /**
+   * Moves an order along, within the transitions in `ADMIN_ORDER_TRANSITIONS`.
+   *
+   * Cancelling a paid order gives its stock back. The webhook took that stock
+   * when the payment landed (`PaymentsService.markPaid`), so releasing it here
+   * is not a nicety — without it, cancelling an order quietly loses inventory
+   * that was never sold. Done in the same transaction as the status change, and
+   * conditioned on the status the order was actually in, so two admins pressing
+   * cancel at once cannot restock it twice.
+   */
+  async updateStatus(
+    id: string,
+    status: OrderStatus,
+    locale: Locale = DEFAULT_LOCALE,
+  ): Promise<AdminOrderDto> {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      select: { id: true, status: true },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`No order with id "${id}"`);
+    }
+
+    if (order.status === status) {
+      // Not an error: pressing the same button twice should be quiet.
+      return this.findByIdForAdmin(id, locale);
+    }
+
+    if (!canTransition(order.status, status)) {
+      throw new ConflictException(
+        `An order that is ${order.status.toLowerCase()} cannot become ${status.toLowerCase()}.`,
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.order.updateMany({
+        where: { id, status: order.status },
+        data: { status },
+      });
+
+      if (claimed.count === 0) {
+        // Somebody else moved it between the read and the write.
+        throw new ConflictException('This order has just been changed elsewhere.');
+      }
+
+      if (!releasesStock(order.status, status)) {
+        return;
+      }
+
+      const items = await tx.orderItem.findMany({
+        where: { orderId: id },
+        select: { variantId: true, quantity: true },
+      });
+
+      for (const item of items) {
+        await tx.productVariant.update({
+          where: { id: item.variantId },
+          data: { stock: { increment: item.quantity } },
+        });
+      }
+    });
+
+    return this.findByIdForAdmin(id, locale);
+  }
+
+  private async findByIdForAdmin(
+    id: string,
+    locale: Locale,
+  ): Promise<AdminOrderDto> {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      select: orderSelect,
+    });
+
+    if (!order) {
+      throw new NotFoundException(`No order with id "${id}"`);
+    }
+
+    return toAdminOrderDto(order, locale);
+  }
+
   async findById(id: string, locale: Locale = DEFAULT_LOCALE): Promise<OrderDto> {
     const order = await this.prisma.order.findUnique({
       where: { id },
@@ -228,6 +357,20 @@ function mergeQuantities(
 
 function subtotal(lines: readonly PricedLine[]): Money {
   return lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
+}
+
+/**
+ * Whether moving between these two statuses hands stock back.
+ *
+ * Only PAID → CANCELLED does: that is the one transition out of a state whose
+ * stock the payment webhook had already taken. A pending order never held any.
+ */
+function releasesStock(from: OrderStatus, to: OrderStatus): boolean {
+  return from === 'PAID' && to === 'CANCELLED';
+}
+
+function toAdminOrderDto(order: OrderRow, locale: Locale): AdminOrderDto {
+  return { ...toOrderDto(order, locale), userId: order.userId };
 }
 
 /** Maps a Prisma row onto the public DTO so DB columns never leak by accident. */

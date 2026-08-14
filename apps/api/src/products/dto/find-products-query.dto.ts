@@ -8,12 +8,13 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import type { ProductListQuery } from '@imix/types';
+import { MAX_PRODUCT_PAGE_SIZE, type ProductListQuery } from '@imix/types';
 import { PricedQueryDto } from '../../common/dto/localised-query.dto';
 
 export const DEFAULT_PAGE = 1;
 export const DEFAULT_PAGE_SIZE = 12;
-export const MAX_PAGE_SIZE = 60;
+/** The API's own cap, shared with anyone who has to page through the lot. */
+export const MAX_PAGE_SIZE = MAX_PRODUCT_PAGE_SIZE;
 
 /** Slugs are lowercase, digits and single hyphens — anything else is rejected. */
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

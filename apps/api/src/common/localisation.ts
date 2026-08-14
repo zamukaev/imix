@@ -14,6 +14,21 @@ export function text(locale: Locale, translations: Record<Locale, string>): stri
   return translations[locale];
 }
 
+/**
+ * `text()` for a column pair that may be empty on both sides.
+ *
+ * A separate helper rather than a ternary at the call site: the nullable pair is
+ * its own shape — an optional line is absent in *both* languages or present in
+ * both, and `null` has to survive to the DTO so the UI can drop the element
+ * instead of rendering an empty one.
+ */
+export function optionalText(
+  locale: Locale,
+  translations: Record<Locale, string | null>,
+): string | null {
+  return translations[locale];
+}
+
 /** `amount(currency, { RUB: row.priceRub, USD: row.priceUsd })` → what to charge. */
 export function amount(
   currency: Currency,

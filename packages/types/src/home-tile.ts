@@ -5,11 +5,20 @@ import type { LocalisedQuery } from './common';
  * admin and rendered in order by the storefront.
  */
 
-/** Ground the tile is drawn on. Mirrors `TileSurface` in the Prisma schema. */
-export type HomeTileSurface = 'LIGHT' | 'WHITE' | 'DARK';
+/**
+ * Ground the tile is drawn on. Mirrors `TileSurface` in the Prisma schema.
+ *
+ * A list rather than a bare union because the admin has to offer all three in a
+ * dropdown, and the API has to reject a fourth.
+ */
+export const HOME_TILE_SURFACES = ['LIGHT', 'WHITE', 'DARK'] as const;
+
+export type HomeTileSurface = (typeof HOME_TILE_SURFACES)[number];
 
 /** A full-bleed tile, or one half of a pair. */
-export type HomeTileWidth = 'FULL' | 'HALF';
+export const HOME_TILE_WIDTHS = ['FULL', 'HALF'] as const;
+
+export type HomeTileWidth = (typeof HOME_TILE_WIDTHS)[number];
 
 /** A CTA. Both halves are always present — a half-filled action is dropped. */
 export type HomeTileActionDto = {
@@ -51,3 +60,70 @@ export type HomeTileDto = {
  * and a picture, never a price.
  */
 export type HomeTileListQuery = LocalisedQuery;
+
+/**
+ * A tile as the admin edits it: every column, both languages, drafts included.
+ *
+ * The public `HomeTileDto` resolves one language and quietly drops a half-filled
+ * action. This one hides nothing — the person arranging the shop window needs to
+ * see the label they typed without an href, precisely because the storefront
+ * will not render it.
+ */
+export type AdminHomeTileDto = {
+  id: string;
+  /** Stable handle the seed names a tile by. Not shown in the URL. */
+  key: string;
+  position: number;
+  published: boolean;
+  width: HomeTileWidth;
+  surface: HomeTileSurface;
+  headlineRu: string;
+  headlineEn: string;
+  subheadRu: string | null;
+  subheadEn: string | null;
+  imageUrl: string;
+  imageAltRu: string | null;
+  imageAltEn: string | null;
+  primaryLabelRu: string | null;
+  primaryLabelEn: string | null;
+  primaryHref: string | null;
+  secondaryLabelRu: string | null;
+  secondaryLabelEn: string | null;
+  secondaryHref: string | null;
+};
+
+/**
+ * Body of `POST /admin/home-tiles` and `PATCH /admin/home-tiles/:id`.
+ *
+ * No `position`: a new tile lands at the end and moves with `POST
+ * /admin/home-tiles/:id/move`. Two ways to set an order would eventually
+ * disagree, and typing a number is the worse of them.
+ */
+export type HomeTileWriteRequest = {
+  key: string;
+  published: boolean;
+  width: HomeTileWidth;
+  surface: HomeTileSurface;
+  headlineRu: string;
+  headlineEn: string;
+  subheadRu?: string | null;
+  subheadEn?: string | null;
+  imageUrl: string;
+  imageAltRu?: string | null;
+  imageAltEn?: string | null;
+  primaryLabelRu?: string | null;
+  primaryLabelEn?: string | null;
+  primaryHref?: string | null;
+  secondaryLabelRu?: string | null;
+  secondaryLabelEn?: string | null;
+  secondaryHref?: string | null;
+};
+
+export const TILE_MOVE_DIRECTIONS = ['UP', 'DOWN'] as const;
+
+export type TileMoveDirection = (typeof TILE_MOVE_DIRECTIONS)[number];
+
+/** Body of `POST /admin/home-tiles/:id/move`. */
+export type MoveHomeTileRequest = {
+  direction: TileMoveDirection;
+};

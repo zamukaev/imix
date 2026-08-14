@@ -4,9 +4,11 @@ import { getTranslations } from 'next-intl/server';
 import type { Locale } from '@imix/types';
 import { ProductGallery } from '@/components/product-gallery';
 import { ProductPurchasePanel } from '@/components/product-purchase-panel';
-import { Link } from '@/i18n/navigation';
+import { Link, getPathname } from '@/i18n/navigation';
 import { getProductOrNull } from '@/lib/api';
+import { alternatesFor } from '@/lib/seo';
 import { getRequestContext } from '@/lib/request-context';
+import { MAIN_CONTENT_ID } from '@/lib/main-content';
 
 type ProductPageProps = {
   params: Promise<{ slug: string; locale: Locale }>;
@@ -27,9 +29,14 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   return {
     title: product.name,
     description: product.description,
+    // The slug is locale-independent, so the same product is one page in two
+    // languages rather than two pages competing with each other.
+    alternates: alternatesFor(`/product/${slug}` as Route, locale),
     openGraph: {
+      type: 'website',
       title: t('titleTemplate', { page: product.name }),
       description: product.description,
+      url: getPathname({ href: `/product/${slug}` as Route, locale }),
       images: product.images,
     },
   };
@@ -48,7 +55,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12">
+    <main id={MAIN_CONTENT_ID} className="mx-auto max-w-6xl px-6 py-12">
       <nav aria-label={t('breadcrumb')} className="text-ink-muted mb-10 text-sm">
         <Link
           href={`/${product.category.slug}` as Route}

@@ -1,6 +1,7 @@
 'use client';
 
 import type { Route } from 'next';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useMoney } from '@/components/currency-provider';
 import { Link } from '@/i18n/navigation';
@@ -25,12 +26,12 @@ export function CartLineItem({ line }: CartLineItemProps) {
         className="bg-surface-alt rounded-card size-24 shrink-0 overflow-hidden"
       >
         {line.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={line.image}
             alt=""
-            width={200}
-            height={200}
+            width={192}
+            height={192}
+            sizes="96px"
             className="h-full w-full object-cover"
           />
         ) : null}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 
 type ProductGalleryProps = {
@@ -22,9 +23,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
   return (
     <div className="space-y-4">
       <div className="rounded-card bg-surface-alt aspect-square overflow-hidden">
-        {/* Plain <img> for now; next/image optimisation is Phase 4.2. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={active}
           alt={t('galleryAlt', {
             product: productName,
@@ -33,6 +32,10 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
           })}
           width={800}
           height={800}
+          // The detail page's hero: on the product page this is the largest
+          // thing above the fold, so it loads eagerly rather than on scroll.
+          priority
+          sizes="(min-width: 1024px) 50vw, 100vw"
           className="h-full w-full object-cover"
         />
       </div>
@@ -51,12 +54,12 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
                   index === activeIndex ? 'border-ink' : 'border-transparent hover:border-line',
                 ].join(' ')}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={image}
                   alt=""
                   width={160}
                   height={160}
+                  sizes="80px"
                   className="h-full w-full object-cover"
                 />
               </button>

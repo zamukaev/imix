@@ -24,14 +24,26 @@ export async function AccountLink() {
 
   return (
     <div className="flex items-center gap-3">
-      <span
+      <Link
+        href="/account"
         // The address rather than the name: it is what they signed in with, and
-        // a name is optional at registration.
+        // a name is optional at registration. It is also the way in to the
+        // account — the header has no room for a second link, and the name of
+        // the person is what anyone would click looking for their own things.
         title={session.email}
-        className="text-ink-muted hidden max-w-[12ch] truncate text-sm sm:inline"
+        aria-label={t('account')}
+        className="text-ink-muted hover:text-ink hidden max-w-[12ch] truncate text-sm transition-colors sm:inline"
       >
         {session.email}
-      </span>
+      </Link>
+      {/* Below `sm` the address is hidden, so the account needs its own way in
+          or a phone has none at all. */}
+      <Link
+        href="/account"
+        className="text-ink-muted hover:text-ink text-sm transition-colors sm:hidden"
+      >
+        {t('account')}
+      </Link>
       <SignOutButton label={t('signOut')} />
     </div>
   );

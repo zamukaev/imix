@@ -1,11 +1,13 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { MIN_PASSWORD_LENGTH } from '@imix/types';
 import { Button } from '@/components/ui/button';
 import { FIELD_CLASS, Field } from '@/components/ui/form-field';
 import { Link, useRouter } from '@/i18n/navigation';
+import { RETURN_TO_PARAM, safeReturnTo } from '@/lib/session-routes';
 import {
   EMPTY_AUTH_FORM,
   parseAuthForm,
@@ -42,6 +44,9 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const tValidation = useTranslations('validation');
   const tErrors = useTranslations('errors');
   const router = useRouter();
+  // Set by the middleware when it turned somebody away from a page they were
+  // heading for. Validated rather than trusted: see `safeReturnTo`.
+  const returnTo = safeReturnTo(useSearchParams().get(RETURN_TO_PARAM));
 
   const [state, submit, isPending] = useActionState<AuthFormState, FormData>(
     async (_previous, formData) => {
@@ -80,6 +85,15 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           fieldErrors: {},
           formError: message,
         };
+      }
+
+      if (returnTo) {
+        // A full navigation rather than `router.push`: the value already
+        // carries its own locale prefix (the middleware copied it off the path
+        // it turned away), and the locale-aware router would add a second one.
+        window.location.assign(returnTo);
+
+        return INITIAL_STATE;
       }
 
       // `refresh` re-renders the Server Components with the new cookie in place,

@@ -9,3 +9,52 @@
     -webkit-font-smoothing: antialiased;
   }
 }
+
+/**
+ * A scrolling row without a scrollbar drawn across it.
+ *
+ * Only for rows that say they scroll by other means — the model rail cuts its
+ * last chip off at the viewport edge, the carousel has arrows underneath. On
+ * anything else this hides the only affordance there is, so it is a utility and
+ * not a default.
+ */
+@utility scrollbar-none {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/**
+ * A row that runs the full width of the page, with its first item still lined
+ * up under the content column.
+ *
+ * That pairing is the whole point: the heading above stays in the column, the
+ * row starts flush with it, and the row's tail runs off the screen instead of
+ * stopping at an invisible margin — which is what tells you it scrolls.
+ *
+ * The percentage resolves against the full-width parent, not the viewport.
+ * `50vw` would be half the viewport *including* the scrollbar gutter, so on
+ * every desktop with a visible scrollbar the row would overhang the page by a
+ * few pixels and give the body a horizontal scrollbar of its own.
+ *
+ * Put it on the scrolling element itself: as padding it scrolls away with the
+ * content, which a margin would not.
+ */
+@utility bleed-row {
+  --bleed-row-inset: max(
+    var(--spacing-page-gutter),
+    calc(50% - var(--container-page) / 2 + var(--spacing-page-gutter))
+  );
+
+  padding-inline: var(--bleed-row-inset);
+
+  /*
+   * Scroll snapping measures from the scrollport edge and ignores padding, so a
+   * `snap-start` item snaps to the very edge of the screen — which scrolls the
+   * row by exactly the inset the moment it is touched, and undoes the alignment
+   * above. `scroll-padding` is what moves the snap line back onto the column.
+   */
+  scroll-padding-inline: var(--bleed-row-inset);
+}

@@ -7,6 +7,7 @@ import { ButtonLink } from '@/components/ui/button';
 import { Link } from '@/i18n/navigation';
 import { cartSubtotal } from '@/lib/cart';
 import { useCartStore } from '@/stores/cart-store';
+import { MAIN_CONTENT_ID } from '@/lib/main-content';
 
 export default function CartPage() {
   const t = useTranslations('cart');
@@ -16,7 +17,7 @@ export default function CartPage() {
   const subtotal = cartSubtotal(lines);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
+    <main id={MAIN_CONTENT_ID} className="mx-auto max-w-3xl px-6 py-16">
       <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{t('title')}</h1>
 
       {!hasHydrated ? null : lines.length === 0 ? (

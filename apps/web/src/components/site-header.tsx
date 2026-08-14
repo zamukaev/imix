@@ -4,6 +4,7 @@ import { CartLink } from '@/components/cart-link';
 import { CategoryNav } from '@/components/category-nav';
 import { CurrencySwitcher } from '@/components/currency-switcher';
 import { LanguageSwitcher } from '@/components/language-switcher';
+import { Logo } from '@/components/ui/logo';
 import { Link } from '@/i18n/navigation';
 import { getCategories } from '@/lib/api';
 import { getRequestContext } from '@/lib/request-context';
@@ -30,8 +31,8 @@ export async function SiteHeader() {
         aria-label={t('primary')}
         className="relative mx-auto flex max-w-6xl items-center gap-4 px-6 py-4 sm:gap-8"
       >
-        <Link href="/" className="text-xl font-semibold tracking-tight">
-          iMIX
+        <Link href="/" aria-label={t('home')} className="shrink-0">
+          <Logo priority className="h-5 w-auto sm:h-6" />
         </Link>
 
         <CategoryNav categories={categories} />

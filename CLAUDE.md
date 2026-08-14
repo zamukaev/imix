@@ -28,7 +28,7 @@ The test: a visitor should recognise the *kind* of design and never mistake the
 ### Language and money
 
 - **Russian is the primary language**, English is the secondary one. Russian
-  sits on bare paths (`/phones`), English is prefixed (`/en/phones`).
+  sits on bare paths (`/iphone`), English is prefixed (`/en/iphone`).
 - **Prices are quoted in RUB and USD.** Both are *stored*, never converted:
   there is no exchange rate in this codebase. Adding a currency means adding a
   price column, on purpose.
@@ -148,13 +148,13 @@ pnpm build              # production build
 - ~~**Slice — Language & money:** ru/en via next-intl, RUB/USD stored per
   product, bilingual catalogue. Landed out of phase order because it changes the
   schema.~~ ✅
-- ► **Phase 3 — Admin:** auth (JWT, USER/ADMIN), protected `/admin`, product &
+- ~~**Phase 3 — Admin:** auth (JWT, USER/ADMIN), protected `/admin`, product &
   category CRUD, order list, and the editable home page (`HomeTile`) that
-  Phase 4.2 renders from.
-- **Phase 4 — Design, responsive & polish:** the design language in §5 of
+  Phase 4.2 renders from.~~ ✅
+- ~~**Phase 4 — Design, responsive & polish:** the design language in §5 of
   `ARCHITECTURE.md` made real — tokens, tile primitives, the home page rebuilt as
-  a tile stack — then mobile layouts, loading/empty/error states, SEO, images.
-- **Phase 5 — 3D layer:** R3F product viewer on detail page, scroll-driven hero,
+  a tile stack — then mobile layouts, loading/empty/error states, SEO, images.~~ ✅
+- ► **Phase 5 — 3D layer:** R3F product viewer on detail page, scroll-driven hero,
   performance budget (lazy-load models, suspense, low-poly fallbacks).
 
 Update the ► marker as phases complete.

@@ -1,10 +1,41 @@
-import type { Route } from 'next';
-import type { HomeTileActions, HomeTileDto, HomeTileSurface } from '@imix/types';
+import type { Metadata, Route } from 'next';
+import { getTranslations } from 'next-intl/server';
+import type {
+  HomeTileActions,
+  HomeTileDto,
+  HomeTileSurface,
+  Locale,
+} from '@imix/types';
+import { getPathname } from '@/i18n/navigation';
 import { ButtonLink } from '@/components/ui/button';
+import { Reveal } from '@/components/ui/reveal';
 import { Tile, TilePair, TileStack, type TileProps, type TileSurface } from '@/components/ui/tile';
 import { getHomeTiles } from '@/lib/api';
 import { toHomeRows } from '@/lib/home-tiles';
+import { MAIN_CONTENT_ID } from '@/lib/main-content';
+import { alternatesFor } from '@/lib/seo';
 import { getRequestContext } from '@/lib/request-context';
+
+type HomePageProps = {
+  params: Promise<{ locale: Locale }>;
+};
+
+export async function generateMetadata({ params }: HomePageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'metadata' });
+
+  return {
+    // No `title` — the root layout's default is already "iMIX", and a template
+    // would make the home page read "iMIX · iMIX".
+    alternates: alternatesFor('/', locale),
+    openGraph: {
+      type: 'website',
+      title: t('titleDefault'),
+      description: t('description'),
+      url: getPathname({ href: '/', locale }),
+    },
+  };
+}
 
 /**
  * The shop window: a stack of tiles read from the database, not a hard-coded
@@ -13,28 +44,52 @@ import { getRequestContext } from '@/lib/request-context';
  */
 export default async function HomePage() {
   const { locale } = await getRequestContext();
-  const tiles = await getHomeTiles({ locale });
+  const [tiles, t] = await Promise.all([
+    getHomeTiles({ locale }),
+    getTranslations('home'),
+  ]);
   const rows = toHomeRows(tiles);
 
+  // Every tile unpublished, or none created yet. A blank page would read as a
+  // broken deploy, so the shop says what it is and offers the way in it still
+  // has — the catalogue does not depend on the shop window.
+  if (rows.length === 0) {
+    return (
+      <main
+        id={MAIN_CONTENT_ID}
+        className="mx-auto flex max-w-xl flex-col items-center px-6 py-32 text-center"
+      >
+        <h1 className="text-headline font-semibold">{t('emptyTitle')}</h1>
+        <p className="text-ink-muted mt-4">{t('emptyLead')}</p>
+        <ButtonLink href="/iphone" className="mt-10">
+          {t('emptyAction')}
+        </ButtonLink>
+      </main>
+    );
+  }
+
   return (
-    <TileStack>
-      {rows.map((row, index) =>
-        row.kind === 'pair' ? (
-          <TilePair
-            key={row.left.id}
-            left={toTileProps(row.left)}
-            right={toTileProps(row.right)}
-          />
-        ) : (
-          // Exactly one `h1` per page, on the tile that opens it; its image is
-          // the largest thing above the fold, so it must not lazy-load.
-          <Tile
-            key={row.tile.id}
-            {...toTileProps(row.tile, { first: index === 0 })}
-          />
-        ),
-      )}
-    </TileStack>
+    // The tile stack is the page's content, so it belongs in a landmark — and
+    // the skip link needs somewhere to land here as much as anywhere else.
+    <main id={MAIN_CONTENT_ID}>
+      <TileStack>
+        {rows.map((row, index) =>
+          row.kind === 'pair' ? (
+            <Reveal key={row.left.id}>
+              <TilePair left={toTileProps(row.left)} right={toTileProps(row.right)} />
+            </Reveal>
+          ) : (
+            // Exactly one `h1` per page, on the tile that opens it; its image is
+            // the largest thing above the fold, so it must not lazy-load — and
+            // `Reveal` leaves anything already on screen alone, so the first
+            // tile is never hidden and faded in.
+            <Reveal key={row.tile.id}>
+              <Tile {...toTileProps(row.tile, { first: index === 0 })} />
+            </Reveal>
+          ),
+        )}
+      </TileStack>
+    </main>
   );
 }
 
@@ -65,9 +120,9 @@ function toTileProps(
  *
  * The `as Route` casts are the one place typed routes cannot help: an href out
  * of the database is a runtime string, and no amount of typing makes it a known
- * route. That check belongs on the write side, where a human picks the
- * destination — see the note in ARCHITECTURE.md §2. Until the admin exists,
- * these hrefs are only ever what the seed put there.
+ * route. The check that matters happens where a human picks the destination —
+ * `StorefrontHrefService` resolves every tile link against the real catalogue on
+ * write, so nothing reaching here points at a page this shop does not have.
  */
 function toActions(actions: HomeTileActions): TileProps['actions'] {
   const [primary, secondary] = actions;

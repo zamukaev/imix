@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import Image from 'next/image';
 
 /**
  * The marketing surface, as described in ARCHITECTURE.md §5.1.
@@ -108,16 +109,18 @@ export function Tile({
         // placement the photographer framed — low in the frame, clear of the
         // copy. `surface` still decides the text colour, and shows through as
         // the ground on a tile that has no image yet.
-        <>
-          {/* Plain <img> for now; next/image optimisation is Phase 4.4. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={media.src}
-            alt={media.alt}
-            loading={media.priority ? 'eager' : 'lazy'}
-            className="absolute inset-0 h-full w-full object-cover object-center"
-          />
-        </>
+        // `fill` rather than a width and a height: the artwork is far wider than
+        // any tile and its intrinsic size is not the point — the tile's own box
+        // is. `sizes="100vw"` says so, and keeps the optimiser from serving a
+        // 640px file for a full-bleed banner.
+        <Image
+          src={media.src}
+          alt={media.alt}
+          fill
+          sizes="100vw"
+          priority={media.priority}
+          className="object-cover object-center"
+        />
       ) : null}
 
       <div

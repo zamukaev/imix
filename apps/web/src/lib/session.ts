@@ -28,3 +28,17 @@ export async function getSession(): Promise<Session | null> {
 
   return { userId: claims.sub, email: claims.email, role: claims.role };
 }
+
+/**
+ * The token itself, for a Server Component that has to call a guarded endpoint.
+ *
+ * Returned only while it is still live — an expired one would be refused by the
+ * API anyway, and the middleware has already had its chance to renew it. `null`
+ * means "ask them to sign in", not "try anyway".
+ */
+export async function getAccessToken(): Promise<string | null> {
+  const store = await cookies();
+  const token = store.get(ACCESS_COOKIE)?.value;
+
+  return token && readSessionClaims(token) ? token : null;
+}

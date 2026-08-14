@@ -10,7 +10,7 @@ import {
   type ProductVariantDto,
 } from '@imix/types';
 import { Prisma } from '@prisma/client';
-import { amount, priceColumn, text } from '../common/localisation';
+import { amount, optionalText, priceColumn, text } from '../common/localisation';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   DEFAULT_PAGE,
@@ -31,12 +31,16 @@ const listSelect = {
   slug: true,
   nameRu: true,
   nameEn: true,
+  taglineRu: true,
+  taglineEn: true,
   brand: true,
   basePriceRub: true,
   basePriceUsd: true,
   images: true,
+  navImageUrl: true,
   featured: true,
   category: { select: { slug: true, nameRu: true, nameEn: true } },
+  group: { select: { slug: true, nameRu: true, nameEn: true } },
 } satisfies Prisma.ProductSelect;
 
 const variantSelect = {
@@ -141,6 +145,10 @@ function toListItem(
     id: product.id,
     slug: product.slug,
     name: text(locale, { ru: product.nameRu, en: product.nameEn }),
+    tagline: optionalText(locale, {
+      ru: product.taglineRu,
+      en: product.taglineEn,
+    }),
     brand: product.brand,
     basePrice: amount(currency, {
       RUB: product.basePriceRub,
@@ -148,6 +156,7 @@ function toListItem(
     }),
     currency,
     images: product.images,
+    navImage: product.navImageUrl,
     featured: product.featured,
     category: {
       slug: product.category.slug,
@@ -156,6 +165,15 @@ function toListItem(
         en: product.category.nameEn,
       }),
     },
+    group: product.group
+      ? {
+          slug: product.group.slug,
+          name: text(locale, {
+            ru: product.group.nameRu,
+            en: product.group.nameEn,
+          }),
+        }
+      : null,
   };
 }
 

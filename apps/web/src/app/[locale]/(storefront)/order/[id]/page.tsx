@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import type { Locale, OrderDto, OrderStatus } from '@imix/types';
@@ -8,6 +9,7 @@ import { Link } from '@/i18n/navigation';
 import { getOrderOrNull } from '@/lib/api';
 import { formatCountry, formatDateTime, formatMoney } from '@/lib/format';
 import { getRequestContext } from '@/lib/request-context';
+import { MAIN_CONTENT_ID } from '@/lib/main-content';
 
 type OrderPageProps = {
   params: Promise<{ id: string; locale: Locale }>;
@@ -49,7 +51,7 @@ export default async function OrderPage({ params }: OrderPageProps) {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
+    <main id={MAIN_CONTENT_ID} className="mx-auto max-w-3xl px-6 py-16">
       <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
         {t(HEADLINE_KEYS[order.status])}
       </h1>
@@ -117,12 +119,12 @@ async function OrderLines({ order, locale }: { order: OrderDto; locale: Locale }
               className="bg-surface-alt flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl"
             >
               {item.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={item.image}
                   alt=""
                   width={128}
                   height={128}
+                  sizes="64px"
                   className="h-full w-full object-cover"
                 />
               ) : null}

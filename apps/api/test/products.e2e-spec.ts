@@ -3,6 +3,10 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { PrismaService } from '../src/prisma/prisma.service';
+
+/** Namespaced so the fixture is unmistakable, and removable, in a seeded database. */
+const UNTAGGED_SLUG = 'e2e-products-untagged';
 
 // Needs the seeded database: `docker compose up -d db && pnpm --filter api db:seed`.
 describe('products endpoints', () => {
@@ -25,6 +29,9 @@ describe('products endpoints', () => {
   });
 
   afterAll(async () => {
+    await app.get(PrismaService).product.deleteMany({
+      where: { slug: UNTAGGED_SLUG },
+    });
     await app.close();
   });
 
@@ -45,12 +52,16 @@ describe('products endpoints', () => {
         id: expect.any(String),
         slug: expect.any(String),
         name: expect.any(String),
+        tagline: expect.any(String),
         brand: expect.any(String),
         basePrice: expect.any(Number),
         currency: 'RUB',
         images: expect.any(Array),
+        navImage: expect.any(String),
         featured: expect.any(Boolean),
         category: { slug: expect.any(String), name: expect.any(String) },
+        // Null on every line but Mac, so the shape is asserted rather than a value.
+        group: null,
       });
     });
 
@@ -78,23 +89,75 @@ describe('products endpoints', () => {
       );
     });
 
+    it('resolves the tagline into the requested language', async () => {
+      const [russian, english] = await Promise.all([
+        request(app.getHttpServer())
+          .get('/products?category=iphone&locale=ru')
+          .expect(200),
+        request(app.getHttpServer())
+          .get('/products?category=iphone&locale=en')
+          .expect(200),
+      ]);
+
+      const [ru] = russian.body.items;
+      const [en] = english.body.items;
+
+      expect(ru.id).toBe(en.id);
+      expect(ru.tagline).toEqual(expect.any(String));
+      expect(en.tagline).toEqual(expect.any(String));
+      expect(ru.tagline).not.toBe(en.tagline);
+    });
+
+    it('reports a missing tagline as null rather than an empty string', async () => {
+      const prisma = app.get(PrismaService);
+      const category = await prisma.category.findUniqueOrThrow({
+        where: { slug: 'iphone' },
+        select: { id: true },
+      });
+
+      await prisma.product.create({
+        data: {
+          slug: UNTAGGED_SLUG,
+          nameRu: 'Без подписи',
+          nameEn: 'Untagged',
+          descriptionRu: 'Тестовый товар.',
+          descriptionEn: 'A test product.',
+          brand: 'Apple',
+          categoryId: category.id,
+          basePriceRub: 100,
+          basePriceUsd: 100,
+          images: [],
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get(`/products/${UNTAGGED_SLUG}`)
+        .expect(200);
+
+      expect(response.body.tagline).toBeNull();
+      expect(response.body.navImage).toBeNull();
+    });
+
+    // `accessories` rather than one of the product lines: "iPhone" and "Mac"
+    // read the same in both catalogues, so they cannot show that the locale is
+    // doing anything.
     it('translates category names without touching the slug', async () => {
       const [russian, english] = await Promise.all([
         request(app.getHttpServer())
-          .get('/products?category=laptops&locale=ru')
+          .get('/products?category=accessories&locale=ru')
           .expect(200),
         request(app.getHttpServer())
-          .get('/products?category=laptops&locale=en')
+          .get('/products?category=accessories&locale=en')
           .expect(200),
       ]);
 
       expect(russian.body.items[0].category).toEqual({
-        slug: 'laptops',
-        name: 'Ноутбуки',
+        slug: 'accessories',
+        name: 'Аксессуары',
       });
       expect(english.body.items[0].category).toEqual({
-        slug: 'laptops',
-        name: 'Laptops',
+        slug: 'accessories',
+        name: 'Accessories',
       });
     });
 
@@ -110,12 +173,12 @@ describe('products endpoints', () => {
     it('filters by category', async () => {
       const response = await request(app.getHttpServer())
         .get('/products')
-        .query({ category: 'laptops' })
+        .query({ category: 'mac' })
         .expect(200);
 
       expect(response.body.total).toBeGreaterThan(0);
       for (const item of response.body.items) {
-        expect(item.category.slug).toBe('laptops');
+        expect(item.category.slug).toBe('mac');
       }
     });
 
@@ -185,14 +248,17 @@ describe('products endpoints', () => {
         id: expect.any(String),
         slug: 'iphone-17-pro',
         name: expect.any(String),
+        tagline: expect.any(String),
         brand: 'Apple',
         description: expect.any(String),
         basePrice: expect.any(Number),
         currency: 'RUB',
         images: expect.any(Array),
+        navImage: expect.any(String),
         featured: true,
+        group: null,
         model3dUrl: null,
-        category: { slug: 'phones', name: 'Смартфоны' },
+        category: { slug: 'iphone', name: 'iPhone' },
         variants: expect.any(Array),
       });
 
