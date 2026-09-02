@@ -9,6 +9,11 @@ name: deploy
 on:
   push:
     branches: [main]
+  # Validation only — see the guards on `build` and `deploy`. A workflow that
+  # runs for the first time on the commit that deploys it is one that gets
+  # debugged in production.
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -68,6 +73,11 @@ jobs:
 
   build:
     needs: validate
+    # A pull request gets its code checked, not its images published: the tag
+    # would name a commit that may never reach main, and NEXT_PUBLIC_* is baked
+    # in at build time, so a PR image is bound to production's domain while
+    # being no version of production.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -154,6 +164,7 @@ jobs:
 
   deploy:
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment: production
     steps:
