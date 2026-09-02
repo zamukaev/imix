@@ -64,6 +64,19 @@ jobs:
       - name: Apply migrations
         run: pnpm --filter api db:deploy
 
+      # The specs read the catalogue rather than building one: they ask for
+      # `iphone-17-pro`, count the categories, and expect the home tiles to be
+      # there. A migrated-but-empty database fails 53 of them. Locally the seed
+      # ran once, months ago, and every run since has quietly depended on it.
+      - name: Seed the catalogue
+        env:
+          # Only the seed reads these, and only to create the first ADMIN. The
+          # account exists for the length of this job and is reachable by
+          # nothing.
+          ADMIN_EMAIL: admin@imix.test
+          ADMIN_PASSWORD: not-a-real-password
+        run: pnpm --filter api db:seed
+
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test
