@@ -19,6 +19,10 @@ next-env.d.ts
 .env
 .env.*
 !.env.example
+# The production template. It is committed on purpose and contains no value
+# that is secret — the real /opt/imix/.env lives only on the server. Needs its
+# own exception because `.env.*` above catches it and `!.env.example` does not.
+!.env.production.example
 
 # logs
 *.log

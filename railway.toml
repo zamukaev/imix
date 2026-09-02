@@ -1,0 +1,24 @@
+# Railway service definition for apps/api.
+#
+# The service's root directory stays "/": the Dockerfile builds from the
+# repository root because the API imports @imix/types through the pnpm
+# workspace, and a context rooted at apps/api cannot see it.
+#
+# Only the API belongs on Railway — the storefront is a Vercel project
+# (apps/web/vercel.json) and Postgres is a Railway plugin or an external
+# managed database.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/api/Dockerfile"
+
+[deploy]
+# Once per release, before the new container takes traffic — not in the image's
+# CMD, which would re-run it for every replica and every restart. The image's
+# working directory is apps/api, so this is the package's own script.
+preDeployCommand = ["pnpm run db:deploy"]
+
+# GET /health is the HealthController; main.ts sets no global prefix.
+healthcheckPath = "/health"
+
+restartPolicyType = "ON_FAILURE"

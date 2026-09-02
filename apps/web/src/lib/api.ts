@@ -46,7 +46,25 @@ const DEFAULT_API_URL = 'http://localhost:4000';
 /** Catalogue data changes rarely — revalidate rather than refetch per request. */
 const CATALOGUE_REVALIDATE_SECONDS = 60;
 
-export const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL;
+/**
+ * Where this module sends its requests.
+ *
+ * The browser has one option: `NEXT_PUBLIC_API_URL`, the public origin, baked
+ * into the bundle at build time. The server has a better one. Behind a single
+ * reverse proxy the public URL would send a server-rendered request out to the
+ * host's own public address and back in again — a hairpin through nginx, and a
+ * dependency on DNS and TLS for a call between two containers on the same
+ * bridge. `API_INTERNAL_URL` (`http://backend:4000` in production) skips it.
+ *
+ * Unset — locally, and on any platform where the two are the same host — this
+ * falls through to the public URL and nothing changes. The `window` check keeps
+ * the server branch out of the client bundle, where a non-`NEXT_PUBLIC_`
+ * variable is `undefined` anyway.
+ */
+export const apiBaseUrl =
+  (typeof window === 'undefined' ? process.env.API_INTERNAL_URL : undefined) ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  DEFAULT_API_URL;
 
 /** Thrown for any non-2xx response so callers can branch on the status. */
 export class ApiRequestError extends Error {

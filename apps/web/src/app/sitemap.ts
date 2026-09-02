@@ -29,8 +29,18 @@ import { siteUrl } from '@/lib/seo';
  */
 const MAX_PAGES = 20;
 
-/** Re-read hourly. A new product should not wait for a deploy to be listed. */
-export const revalidate = 3600;
+/**
+ * Built per request, not at build time.
+ *
+ * With `revalidate` this route was prerendered during `next build` — and the
+ * image is now built in CI, where the API does not exist. The `catch`es below
+ * would turn that into a sitemap listing the home page and nothing else, baked
+ * into the image and served until the first revalidation an hour later. Rendered
+ * on demand it always reflects the live catalogue; the `getProducts` and
+ * `getCategories` calls carry their own 60-second fetch cache, so a crawler
+ * hitting this repeatedly still costs one API round trip a minute.
+ */
+export const dynamic = 'force-dynamic';
 
 type Entry = MetadataRoute.Sitemap[number];
 
