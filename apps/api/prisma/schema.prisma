@@ -131,22 +131,58 @@ model Product {
   model3dUrl    String? // .glb for R3F viewer (Phase 5)
   featured      Boolean          @default(false)
   variants      ProductVariant[]
+  colors        ProductColor[]
   createdAt     DateTime         @default(now())
 }
 
+/// One finish a product is sold in — the swatch row on the detail page.
+///
+/// A colour owns its photographs, because that is the whole point of choosing
+/// one: a shopper picking "Lavender" expects to see the lavender device, not the
+/// black one with a different word under it. `Product.images` stays the
+/// product's canonical set for the catalogue grid, the cart and link previews,
+/// and is what the gallery falls back to for a product sold in one finish.
+///
+/// The swatch is a plain hex string rather than a token: these are the
+/// manufacturer's finishes, not iMIX's palette, so they cannot come from
+/// `tokens.css` and an admin has to be able to enter a new one without a deploy.
+model ProductColor {
+  id        String           @id @default(cuid())
+  productId String
+  product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  /// Stable handle within the product — "lavender". What a deep link would name,
+  /// so it must not change when the display name is corrected.
+  slug      String
+  nameRu    String
+  nameEn    String
+  /// `#rrggbb`, validated on write. Shown as the swatch itself.
+  hex       String
+  images    String[]
+  position  Int              @default(0)
+  variants  ProductVariant[]
+
+  @@unique([productId, slug])
+  @@index([productId, position])
+}
+
 model ProductVariant {
-  id         String      @id @default(cuid())
+  id         String        @id @default(cuid())
   productId  String
-  product    Product     @relation(fields: [productId], references: [id])
-  sku        String      @unique
+  product    Product       @relation(fields: [productId], references: [id])
+  sku        String        @unique
   labelRu    String // "256 ГБ · Чёрный титан"
   labelEn    String // "256GB · Black Titanium"
-  color      String?
+  /// Which finish this variant is. Null for a product sold in one colour, where
+  /// a swatch row would be a control with a single choice.
+  colorId    String?
+  color      ProductColor? @relation(fields: [colorId], references: [id])
   config     String? // storage / RAM etc.
   priceRub   Int // minor units (копейки)
   priceUsd   Int // minor units (cents)
-  stock      Int         @default(0)
+  stock      Int           @default(0)
   orderItems OrderItem[]
+
+  @@index([colorId])
 }
 
 model Order {

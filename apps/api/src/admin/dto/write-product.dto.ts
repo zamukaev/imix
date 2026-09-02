@@ -4,6 +4,7 @@ import {
   ArrayNotEmpty,
   IsArray,
   IsBoolean,
+  IsOptional,
   IsString,
   Length,
   Matches,
@@ -20,6 +21,7 @@ import {
   slugified,
   trimmed,
 } from './write-category.dto';
+import { WriteColorDto } from './write-color.dto';
 import { WriteVariantDto } from './write-variant.dto';
 
 const CUID_PATTERN = /^[a-z0-9]{20,32}$/;
@@ -36,6 +38,9 @@ const MAX_IMAGES = 10;
 
 /** One product cannot reasonably have more configurations than this. */
 const MAX_VARIANTS = 40;
+
+/** A swatch row that does not fit on a phone has stopped being a control. */
+const MAX_COLORS = 12;
 
 /**
  * Either a path this shop serves (`/products/x.jpg`) or an absolute http(s) URL
@@ -131,6 +136,23 @@ export class WriteProductDto implements ProductWriteRequest {
 
   @IsBoolean()
   featured!: boolean;
+
+  /**
+   * The product's finishes, in the order sent — that order becomes `position`,
+   * so the swatch row reads left to right the way the admin arranged it.
+   *
+   * The whole list every time. A colour missing from it is deleted, which is how
+   * the variant list already behaves and keeps one product edit to one request.
+   * Optional so a `PATCH` that only touches, say, `featured` does not have to
+   * restate the colours; absent means "leave them alone", `[]` means "remove
+   * them all".
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_COLORS)
+  @ValidateNested({ each: true })
+  @Type(() => WriteColorDto)
+  colors?: WriteColorDto[];
 }
 
 /**

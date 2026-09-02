@@ -10,6 +10,7 @@ export type {
   AdminCatalogueStatsDto,
   AdminCategoryDto,
   AdminCategoryRefDto,
+  AdminColorDto,
   AdminOrderCountsDto,
   AdminOrderDto,
   AdminOrderListQuery,
@@ -20,6 +21,7 @@ export type {
   AdminStatsDto,
   AdminVariantDto,
   CategoryWriteRequest,
+  ColorWriteRequest,
   CreateProductRequest,
   ProductWriteRequest,
   UpdateOrderStatusRequest,
@@ -84,6 +86,7 @@ export type { CreatePaymentIntentRequest, PaymentIntentDto } from './payment';
 export { MAX_PRODUCT_PAGE_SIZE } from './product';
 export type {
   ProductCategoryDto,
+  ProductColorDto,
   ProductDetailDto,
   ProductGroupDto,
   ProductListItemDto,

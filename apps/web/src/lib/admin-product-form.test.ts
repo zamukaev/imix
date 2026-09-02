@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { AdminVariantDto } from '@imix/types';
 import {
+  colorProblems,
   emptyProductDraft,
   emptyVariantDraft,
   toCreateProductRequest,
   toProductRequest,
   toVariantRequest,
   variantDraftFrom,
+  type ColorDraft,
   type ProductDraft,
   type VariantDraft,
 } from './admin-product-form';
@@ -58,9 +60,9 @@ describe('toVariantRequest', () => {
   it('turns a blank colour into null rather than an empty string', () => {
     // "Not set" and "set to nothing" are different, and only one of them is
     // representable in the column.
-    const result = toVariantRequest(variant({ color: '   ', config: '128 ГБ' }));
+    const result = toVariantRequest(variant({ colorSlug: '   ', config: '128 ГБ' }));
 
-    expect(result.ok && result.value.color).toBeNull();
+    expect(result.ok && result.value.colorSlug).toBeNull();
     expect(result.ok && result.value.config).toBe('128 ГБ');
   });
 
@@ -111,7 +113,7 @@ describe('variantDraftFrom', () => {
       sku: 'IP17P-256-BLK',
       labelRu: '256 ГБ',
       labelEn: '256GB',
-      color: null,
+      colorId: null,
       config: '256 ГБ',
       priceRub: 14_999_000,
       priceUsd: 109_900,
@@ -125,7 +127,7 @@ describe('variantDraftFrom', () => {
       sku: dto.sku,
       labelRu: dto.labelRu,
       labelEn: dto.labelEn,
-      color: null,
+      colorSlug: null,
       config: dto.config,
       priceRub: dto.priceRub,
       priceUsd: dto.priceUsd,
@@ -190,5 +192,44 @@ describe('toCreateProductRequest', () => {
 
     expect(!result.ok && result.fields.nameEn).toBe('required');
     expect(!result.ok && result.variants[0]?.priceUsd).toBe('required');
+  });
+});
+
+describe('colorProblems', () => {
+  const colour = (patch: Partial<ColorDraft> = {}): ColorDraft => ({
+    slug: 'lavender',
+    nameRu: 'Лавандовый',
+    nameEn: 'Lavender',
+    hex: '#e6dcf0',
+    images: [],
+    ...patch,
+  });
+
+  it('accepts a complete colour', () => {
+    expect(colorProblems([colour()]).size).toBe(0);
+  });
+
+  it('points at the row that is wrong, not just "a colour"', () => {
+    const problems = colorProblems([colour(), colour({ nameEn: '  ' })]);
+
+    expect(problems.get(0)).toBeUndefined();
+    expect(problems.get(1)).toEqual({ nameEn: 'required' });
+  });
+
+  it.each([
+    ['three-digit shorthand', '#abc'],
+    ['a missing hash', 'e6dcf0'],
+    ['a colour name', 'lavender'],
+    ['nothing at all', ''],
+  ])('rejects %s as a swatch', (_case, hex) => {
+    expect(colorProblems([colour({ hex })]).get(0)).toEqual({ hex: 'hex' });
+  });
+
+  it('accepts an uppercase hex, which the request then lower-cases', () => {
+    expect(colorProblems([colour({ hex: '#E6DCF0' })]).size).toBe(0);
+  });
+
+  it('requires both languages — a swatch labelled in one is half a shop', () => {
+    expect(colorProblems([colour({ nameRu: '' })]).get(0)).toEqual({ nameRu: 'required' });
   });
 });

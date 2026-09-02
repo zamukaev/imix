@@ -5,6 +5,7 @@ import {
   type Currency,
   type Locale,
   type Paginated,
+  type ProductColorDto,
   type ProductDetailDto,
   type ProductListItemDto,
   type ProductVariantDto,
@@ -48,16 +49,28 @@ const variantSelect = {
   sku: true,
   labelRu: true,
   labelEn: true,
-  color: true,
+  colorId: true,
   config: true,
   priceRub: true,
   priceUsd: true,
   stock: true,
 } satisfies Prisma.ProductVariantSelect;
 
+const colorSelect = {
+  id: true,
+  slug: true,
+  nameRu: true,
+  nameEn: true,
+  hex: true,
+  images: true,
+} satisfies Prisma.ProductColorSelect;
+
 type ProductListRow = Prisma.ProductGetPayload<{ select: typeof listSelect }>;
 type ProductVariantRow = Prisma.ProductVariantGetPayload<{
   select: typeof variantSelect;
+}>;
+type ProductColorRow = Prisma.ProductColorGetPayload<{
+  select: typeof colorSelect;
 }>;
 
 @Injectable()
@@ -108,6 +121,13 @@ export class ProductsService {
         descriptionRu: true,
         descriptionEn: true,
         model3dUrl: true,
+        colors: {
+          select: colorSelect,
+          // The swatch row is an ordered thing an admin arranges; `position` is
+          // that arrangement, and the slug breaks ties so the order is stable
+          // rather than whatever the database felt like returning.
+          orderBy: [{ position: 'asc' }, { slug: 'asc' }],
+        },
         variants: {
           select: variantSelect,
           // Cheapest first *in the currency being shown* — the two price lists
@@ -128,6 +148,7 @@ export class ProductsService {
         en: product.descriptionEn,
       }),
       model3dUrl: product.model3dUrl,
+      colors: product.colors.map((color) => toColor(color, locale)),
       variants: product.variants.map((variant) =>
         toVariant(variant, locale, currency),
       ),
@@ -186,9 +207,19 @@ function toVariant(
     id: variant.id,
     sku: variant.sku,
     label: text(locale, { ru: variant.labelRu, en: variant.labelEn }),
-    color: variant.color,
+    colorId: variant.colorId,
     config: variant.config,
     price: amount(currency, { RUB: variant.priceRub, USD: variant.priceUsd }),
     stock: variant.stock,
+  };
+}
+
+function toColor(color: ProductColorRow, locale: Locale): ProductColorDto {
+  return {
+    id: color.id,
+    slug: color.slug,
+    name: text(locale, { ru: color.nameRu, en: color.nameEn }),
+    hex: color.hex,
+    images: color.images,
   };
 }
