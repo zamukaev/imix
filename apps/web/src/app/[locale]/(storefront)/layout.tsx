@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { getTranslations } from 'next-intl/server';
+import { CartHydrator } from '@/components/cart-hydrator';
 import { SiteHeader } from '@/components/site-header';
 import { Logo } from '@/components/ui/logo';
 import { MAIN_CONTENT_ID } from '@/lib/main-content';
@@ -12,6 +13,8 @@ export default async function StorefrontLayout({ children }: { children: ReactNo
 
   return (
     <div className="flex min-h-screen flex-col">
+      {/* Restores the persisted cart after mount — renders nothing. */}
+      <CartHydrator />
       {/*
         Six categories, two switchers and a cart link sit above every page. A
         keyboard visitor should not have to walk past all of them on each one —

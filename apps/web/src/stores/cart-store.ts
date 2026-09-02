@@ -26,8 +26,15 @@ const STORAGE_VERSION = 2;
 
 type CartState = {
   lines: CartLine[];
-  /** False until the persisted cart has been read from localStorage, so the
-   * first client render matches the server-rendered (empty) markup. */
+  /**
+   * False until the persisted cart has been read from localStorage, so the
+   * first client render matches the server-rendered (empty) markup.
+   *
+   * This only holds because of `skipHydration` below. Left to itself, `persist`
+   * reads localStorage synchronously while this module is evaluated — the cart
+   * would already be full on React's very first client render, and every
+   * consumer would disagree with the server-rendered HTML.
+   */
   hasHydrated: boolean;
   addItem: (input: CartLineInput, quantity?: number) => void;
   setQuantity: (variantId: string, quantity: number) => void;
@@ -55,6 +62,19 @@ export const useCartStore = create<CartState>()(
     {
       name: STORAGE_KEY,
       version: STORAGE_VERSION,
+      /**
+       * The cart is read after mount, by `CartHydrator`, not while this module
+       * is being evaluated.
+       *
+       * localStorage is synchronous, so the default behaviour fills `lines`
+       * before React ever renders on the client. The server has no localStorage
+       * and renders an empty cart, so the header's count badge — present on
+       * every storefront page — appeared on the client and not in the HTML, and
+       * React threw out the hydrated tree for the whole page. That is a
+       * hydration error on every visit with a non-empty cart, and it takes the
+       * page's interactivity with it until React finishes re-rendering.
+       */
+      skipHydration: true,
       partialize: (state) => ({ lines: state.lines }),
       // Nothing to carry forward from an older shape — see STORAGE_VERSION.
       migrate: () => ({ lines: [] }),
