@@ -1,0 +1,42 @@
+# Build context for both images — apps/api/Dockerfile and apps/web/Dockerfile.
+# Rooted at the repository, because each app's workspace dependencies
+# (@imix/types, @imix/config) live outside its own directory.
+
+node_modules
+**/node_modules
+.git
+.turbo
+**/.turbo
+
+# Rebuilt inside the image. Copying a local build in would ship whatever
+# happened to be on the developer's disk.
+**/dist
+**/.next
+*.tsbuildinfo
+
+# Real secrets. apps/api/.env exists on a working checkout and must never be
+# baked into a layer.
+.env
+**/.env
+**/.env.*
+!**/.env.example
+
+coverage
+
+# Source photography, not shipped assets — apps/web/public carries what the
+# storefront actually serves.
+assets
+
+# Written at runtime into a volume the API and nginx share; whatever is here on
+# a developer's disk is theirs.
+apps/web/public/uploads
+
+# Deployment machinery: it is mounted onto the VPS, never built into an image.
+deploy
+scripts
+backups
+docker-compose*.yml
+
+# Prose. None of it changes a build, and every edit would otherwise invalidate
+# the context.
+*.md

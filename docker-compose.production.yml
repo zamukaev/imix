@@ -1,0 +1,256 @@
+# Production stack for a single VPS. Lives at /opt/imix on the server, beside
+# the .env it reads (see .env.production.example).
+#
+#   docker compose -f docker-compose.production.yml pull
+#   docker compose -f docker-compose.production.yml --profile tasks run --rm migrate
+#   docker compose -f docker-compose.production.yml up -d
+#
+# The development docker-compose.yml is a separate thing and stays as it is: it
+# runs one Postgres on port 5433 for `pnpm dev`, and nothing here replaces it.
+
+# A project name of its own, and not the directory's.
+#
+# Compose defaults to the folder name — `imix` — which is also what the
+# development docker-compose.yml gets. Same project means same container names
+# and, worse, the same volume: bringing this file up in a checkout would adopt
+# the developer's database and `--remove-orphans` would delete their container.
+# On the VPS nothing else exists to collide with; this is here so that running
+# the production stack next to a working copy stays a safe thing to do.
+name: imix-prod
+
+# Docker's default is an unbounded json file per container, and this host has
+# 30 GB of disk. Set per service rather than in /etc/docker/daemon.json so that
+# adopting it does not require restarting the daemon under a running shop.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
+services:
+  # --- data ----------------------------------------------------------------
+  db:
+    image: postgres:17-alpine
+    container_name: imix-db
+    restart: unless-stopped
+    # Only the internal network, and no `ports:` at all. Not published is a
+    # stronger guarantee than a firewall rule: docker-proxy writes its own
+    # forwarding rules ahead of UFW's, so a published port is reachable from the
+    # internet even when `ufw status` says otherwise.
+    networks: [internal]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+    volumes:
+      - imix-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging: *logging
+
+  # --- application ---------------------------------------------------------
+  backend:
+    image: ${GHCR_NAMESPACE:?GHCR_NAMESPACE is required}/imix-api:${IMAGE_TAG:-latest}
+    container_name: imix-api
+    restart: unless-stopped
+    # Both networks: it answers nginx on one and reaches Postgres on the other.
+    networks: [edge, internal]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: '4000'
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      # Without these the API refuses to boot in production, by design
+      # (apps/api/src/auth/auth.constants.ts).
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      # The CORS allowlist. A list, because www redirects to the apex but a
+      # request can still arrive from either.
+      WEB_ORIGIN: ${WEB_ORIGIN:?WEB_ORIGIN is required}
+      # The volume below, not the storefront's public/ — in this topology the
+      # two apps do not share a disk, and nginx serves the files instead.
+      UPLOAD_DIR: /uploads
+      CLOUDINARY_URL: ${CLOUDINARY_URL:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+    volumes:
+      - imix-uploads:/uploads
+    healthcheck:
+      # Node 22 has fetch built in, so no curl in the image. GET /health probes
+      # Postgres and reports "degraded" rather than throwing, hence the explicit
+      # status check as well as the HTTP one.
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:4000/health').then(r=>r.json()).then(b=>process.exit(b.status==='ok'?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging: *logging
+
+  frontend:
+    image: ${GHCR_NAMESPACE:?GHCR_NAMESPACE is required}/imix-web:${IMAGE_TAG:-latest}
+    container_name: imix-web
+    restart: unless-stopped
+    # No internal network: the storefront has no business reaching Postgres.
+    networks: [edge]
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      HOSTNAME: 0.0.0.0
+      # Server-rendered requests take the bridge instead of going out to the
+      # public address and back through nginx. The browser still uses the
+      # NEXT_PUBLIC_API_URL that was baked into the bundle at build time.
+      API_INTERNAL_URL: http://backend:4000
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging: *logging
+
+  # --- edge ----------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: imix-nginx
+    restart: unless-stopped
+    networks: [edge]
+    # The only ports this host publishes.
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN is required}
+      API_DOMAIN: ${API_DOMAIN:?API_DOMAIN is required}
+      # The image's entrypoint runs envsubst over /etc/nginx/templates. Without
+      # this filter it would also expand $host, $remote_addr and every other
+      # nginx variable to the empty string.
+      NGINX_ENVSUBST_FILTER: '^(DOMAIN|API_DOMAIN)$$'
+    volumes:
+      # `bootstrap` (plain HTTP) until scripts/init-letsencrypt.sh has a
+      # certificate, `tls` afterwards. Switching stages is one line in .env.
+      - ./deploy/nginx/${NGINX_STAGE:-bootstrap}:/etc/nginx/templates:ro
+      - ./deploy/nginx/snippets:/etc/nginx/snippets:ro
+      - letsencrypt:/etc/letsencrypt:ro
+      - certbot-webroot:/var/www/certbot:ro
+      # Read-only: nginx serves what the API wrote, and must never be able to
+      # write into the shop's asset store itself.
+      - imix-uploads:/srv/uploads:ro
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '-', 'http://127.0.0.1/healthz']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging: *logging
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: imix-certbot
+    restart: unless-stopped
+    networks: [edge]
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
+    # Twice a day, which is what Let's Encrypt asks for: a renewal is a no-op
+    # until the certificate is inside its 30-day window, and attempting it often
+    # means a failure has 30 days of retries rather than one.
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        trap exit TERM
+        while :; do
+          certbot renew --webroot -w /var/www/certbot --quiet
+          sleep 12h & wait $${!}
+        done
+    logging: *logging
+
+  # --- one-shot tasks ------------------------------------------------------
+  # Behind a profile so `up -d` never starts them. Run explicitly:
+  #   docker compose -f docker-compose.production.yml --profile tasks run --rm migrate
+  migrate:
+    image: ${GHCR_NAMESPACE:?GHCR_NAMESPACE is required}/imix-api:${IMAGE_TAG:-latest}
+    profiles: ['tasks']
+    networks: [internal]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+    # Once per release, deliberately not in the image's CMD: that would re-run
+    # it on every restart and every replica.
+    #
+    # The package script, so the command has one definition. It runs offline —
+    # `pnpm` is a corepack shim that would otherwise fetch its own version from
+    # the registry, and this container has no route out — because the image
+    # keeps corepack's cache (see apps/api/Dockerfile).
+    command: ['pnpm', 'run', 'db:deploy']
+    restart: 'no'
+    logging: *logging
+
+  # The tools image is the API build stage — it still has ts-node, which the
+  # seed needs and the production install strips out. Run once, at first setup:
+  # it upserts the catalogue and creates the ADMIN account, and re-running it
+  # resets that account's password to whatever ADMIN_PASSWORD now says.
+  seed:
+    image: ${GHCR_NAMESPACE:?GHCR_NAMESPACE is required}/imix-api-tools:${IMAGE_TAG:-latest}
+    profiles: ['tasks']
+    networks: [internal]
+    depends_on:
+      db:
+        condition: service_healthy
+    working_dir: /repo
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    # Through pnpm, and not the prisma binary directly: prisma.config.ts names
+    # `ts-node prisma/seed.ts` as the seed command, and ts-node is only on PATH
+    # because pnpm puts node_modules/.bin there.
+    command: ['pnpm', '--filter', 'api', 'db:seed']
+    restart: 'no'
+    logging: *logging
+
+networks:
+  # nginx ↔ frontend ↔ backend.
+  edge:
+    name: imix-edge
+  # backend ↔ db, and nothing else. `internal: true` removes the gateway, so a
+  # container here cannot reach the internet and the internet cannot route to
+  # it — a second lock on the database behind "no published port".
+  internal:
+    name: imix-internal
+    internal: true
+
+volumes:
+  # Same name as the development compose file uses, so the habit of `docker
+  # volume ls` reading `imix-db-data` carries over. They are different volumes:
+  # the project name (`imix` above) namespaces them.
+  imix-db-data:
+  # Product images written by POST /admin/upload and served by nginx.
+  imix-uploads:
+  letsencrypt:
+  certbot-webroot:

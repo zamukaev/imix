@@ -1,0 +1,95 @@
+# Stage 1 of two: plain HTTP.
+#
+# Nothing here mentions a certificate, which is the point — nginx refuses to
+# start when `ssl_certificate` names a file that does not exist, and Let's
+# Encrypt cannot issue one until it can reach /.well-known over HTTP. This
+# config serves the shop *and* the challenge, so the chicken and the egg both
+# fit. scripts/init-letsencrypt.sh switches to deploy/nginx/tls once the
+# certificate exists.
+#
+# Also the config used for local validation, where there is no certificate and
+# never will be.
+#
+# ${DOMAIN} and ${API_DOMAIN} are substituted by the image's entrypoint;
+# NGINX_ENVSUBST_FILTER in the compose file keeps it away from $host and friends.
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+log_format imix '$remote_addr - $host "$request" $status $body_bytes_sent '
+                '"$http_referer" "$http_user_agent" xff="$http_x_forwarded_for" '
+                'rt=$request_time';
+access_log /var/log/nginx/access.log imix;
+
+# Product photography goes through POST /admin/upload as a multipart body.
+client_max_body_size 12m;
+
+gzip              on;
+gzip_vary         on;
+gzip_proxied      any;
+gzip_min_length   1024;
+gzip_types        text/plain text/css application/json application/javascript
+                  application/x-javascript text/xml application/xml
+                  application/xml+rss text/javascript image/svg+xml;
+
+# Anything arriving on this address without a hostname we serve — a scanner, a
+# stale DNS record — is dropped without a response rather than being handed the
+# shop. The one exception is the container's own health check, which reaches
+# nginx over loopback and so has no hostname to present either.
+server {
+    listen      80 default_server;
+    server_name _;
+
+    # The container's own health check reaches nginx over loopback, so it has no
+    # hostname to present either — this is the one thing the catch-all answers.
+    location = /healthz {
+        access_log off;
+        return 200 "ok\n";
+    }
+
+    location / {
+        return 444;
+    }
+}
+
+server {
+    listen      80;
+    server_name ${DOMAIN} www.${DOMAIN};
+
+    # Before everything else, and never redirected: this is how the certificate
+    # gets issued and renewed.
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # Uploaded images, straight off the volume the API writes to. They never
+    # touch Next: LocalDiskStorage hands the shop a relative `/uploads/…` path
+    # and this is what serves it.
+    location /uploads/ {
+        alias     /srv/uploads/;
+        expires   30d;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    location / {
+        proxy_pass http://frontend:3000;
+        include    /etc/nginx/snippets/proxy.conf;
+    }
+}
+
+server {
+    listen      80;
+    server_name ${API_DOMAIN};
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        proxy_pass http://backend:4000;
+        include    /etc/nginx/snippets/proxy.conf;
+    }
+}

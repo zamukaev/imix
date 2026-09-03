@@ -1,0 +1,134 @@
+# Stage 2 of two: HTTPS, switched on by scripts/init-letsencrypt.sh once a
+# certificate exists. One certificate covers all three names (apex, www, api),
+# so there is one renewal to watch instead of three.
+#
+# ${DOMAIN} and ${API_DOMAIN} are substituted by the image's entrypoint;
+# NGINX_ENVSUBST_FILTER in the compose file keeps it away from $host and friends.
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+log_format imix '$remote_addr - $host "$request" $status $body_bytes_sent '
+                '"$http_referer" "$http_user_agent" xff="$http_x_forwarded_for" '
+                'rt=$request_time';
+access_log /var/log/nginx/access.log imix;
+
+client_max_body_size 12m;
+
+gzip              on;
+gzip_vary         on;
+gzip_proxied      any;
+gzip_min_length   1024;
+gzip_types        text/plain text/css application/json application/javascript
+                  application/x-javascript text/xml application/xml
+                  application/xml+rss text/javascript image/svg+xml;
+
+ssl_session_cache   shared:SSL:10m;
+ssl_session_timeout 1d;
+ssl_session_tickets off;
+ssl_protocols       TLSv1.2 TLSv1.3;
+ssl_prefer_server_ciphers off;
+
+# Anything arriving on this address without a hostname we serve — a scanner, a
+# stale DNS record — is dropped without a response rather than being handed the
+# shop. The one exception is the container's own health check, which reaches
+# nginx over loopback and so has no hostname to present either.
+server {
+    listen      80 default_server;
+    server_name _;
+
+    # The container's own health check reaches nginx over loopback, so it has no
+    # hostname to present either — this is the one thing the catch-all answers.
+    location = /healthz {
+        access_log off;
+        return 200 "ok\n";
+    }
+
+    location / {
+        return 444;
+    }
+}
+
+# --- HTTP: the challenge, the health check, and a redirect ------------------
+server {
+    listen      80;
+    server_name ${DOMAIN} www.${DOMAIN} ${API_DOMAIN};
+
+    # Ahead of the redirect on purpose. A renewal that gets 301'd to a port
+    # certbot is not listening on fails, and it fails ninety days later, quietly.
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# --- the shop ---------------------------------------------------------------
+server {
+    listen      443 ssl;
+    http2       on;
+    server_name ${DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+
+    # Two years, and only once HTTPS is known to work — a browser that has seen
+    # this header will refuse plain HTTP to this name for that long, mistake
+    # included. No `preload`: that is a one-way door owned by a list outside
+    # this repository.
+    add_header Strict-Transport-Security "max-age=63072000" always;
+    add_header X-Content-Type-Options    "nosniff" always;
+    add_header Referrer-Policy           "strict-origin-when-cross-origin" always;
+
+    # Uploaded images, straight off the volume the API writes to. They never
+    # touch Next: LocalDiskStorage hands the shop a relative `/uploads/…` path
+    # and this is what serves it.
+    location /uploads/ {
+        alias     /srv/uploads/;
+        expires   30d;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    location / {
+        proxy_pass http://frontend:3000;
+        include    /etc/nginx/snippets/proxy.conf;
+    }
+}
+
+# `www` exists so the name resolves, not so the shop has two addresses. One
+# canonical host, everything else redirected to it.
+server {
+    listen      443 ssl;
+    http2       on;
+    server_name www.${DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+
+    return 301 https://${DOMAIN}$request_uri;
+}
+
+# --- the API ----------------------------------------------------------------
+server {
+    listen      443 ssl;
+    http2       on;
+    server_name ${API_DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+
+    add_header Strict-Transport-Security "max-age=63072000" always;
+    add_header X-Content-Type-Options    "nosniff" always;
+
+    # CORS is the API's own decision, made from WEB_ORIGIN — nginx adding
+    # headers here would either duplicate it or quietly override it.
+    location / {
+        proxy_pass http://backend:4000;
+        include    /etc/nginx/snippets/proxy.conf;
+    }
+}

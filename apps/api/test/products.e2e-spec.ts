@@ -48,7 +48,16 @@ describe('products endpoints', () => {
         total: expect.any(Number),
       });
 
-      expect(response.body.items[0]).toEqual({
+      // `group` is checked apart from the rest because it is the one field whose
+      // presence depends on *which* product sorted first — a Mac is filed under
+      // a tab, an iPhone is not — and the list is ordered by `featured` then
+      // `createdAt`, which is the seed's business rather than this test's.
+      // Asserting `null` here only ever passed against a database whose first
+      // row happened to be ungrouped, which is why it survived every local run
+      // and failed on the first freshly seeded one.
+      const { group, ...listItem } = response.body.items[0];
+
+      expect(listItem).toEqual({
         id: expect.any(String),
         slug: expect.any(String),
         name: expect.any(String),
@@ -60,9 +69,14 @@ describe('products endpoints', () => {
         navImage: expect.any(String),
         featured: expect.any(Boolean),
         category: { slug: expect.any(String), name: expect.any(String) },
-        // Null on every line but Mac, so the shape is asserted rather than a value.
-        group: null,
       });
+
+      if (group !== null) {
+        expect(group).toEqual({
+          slug: expect.any(String),
+          name: expect.any(String),
+        });
+      }
     });
 
     it('answers in Russian roubles when the request says nothing', async () => {

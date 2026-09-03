@@ -225,6 +225,7 @@ Prisma lives in `apps/api`:
 
 ```bash
 pnpm --filter api db:migrate   # create + apply a migration (prisma migrate dev)
+pnpm --filter api db:deploy    # apply existing migrations only — the release step
 pnpm --filter api db:seed      # run prisma/seed.ts — idempotent, safe to repeat
 pnpm --filter api db:reset     # drop, re-migrate, re-seed
 pnpm --filter api db:studio    # browse the data
@@ -239,6 +240,98 @@ The seed loads two categories (`phones`, `laptops`) and four products with nine
 variants. Brands and devices are invented for iMIX. Product imagery is
 self-authored placeholder SVG under `apps/web/public/products/`; real
 photography arrives in Phase 4.
+
+## Deployment
+
+**Production is a single VPS running the whole stack under Docker Compose —
+nginx, the storefront, the API and Postgres — deployed from GitHub Actions
+through GHCR. It has its own document: [`DEPLOYMENT.md`](DEPLOYMENT.md).**
+
+That does **not** settle the 152-ФЗ question. The current host is AlphaVPS,
+which is Bulgarian: the law requires personal data of Russian citizens to be
+stored in Russia, and this shop stores accounts and orders. Moving to a Russian
+provider is a change of host, not a change of architecture — the compose file,
+the images and the workflow all move as they are — but it is still owed.
+
+The rest of this section describes the **Vercel + Railway** layout, which is
+what staging can use and the fallback if that host is ever retired. Config for
+both is still checked in — `apps/web/vercel.json` and `railway.toml` — so
+either is a repository setting rather than something clicked together in a
+dashboard.
+
+The two apps deploy separately there, because they are separate things: the
+storefront is a Next.js app that belongs on a CDN edge, and the API is a
+long-lived process that holds a database connection. See the payments note in
+`CLAUDE.md` for the acquiring side of the same jurisdiction problem.
+
+| Part       | Where                                 |
+| ---------- | ------------------------------------- |
+| `apps/web` | Vercel                                |
+| `apps/api` | Railway (Docker, `apps/api/Dockerfile`) |
+| Postgres   | Railway plugin, Neon or Supabase      |
+| Uploads    | Cloudinary                            |
+
+### The storefront on Vercel
+
+Set the project's **root directory to `apps/web`** and leave "include files
+outside the root directory" on. `vercel.json` overrides the build command,
+because the default `next build` fails here: `@imix/types` is consumed as
+compiled `dist/`, and only a Turbo build knows to compile it first. Node 22, to
+match `.nvmrc`.
+
+Environment variables: `NEXT_PUBLIC_API_URL` pointing at the deployed API, and
+`NEXT_PUBLIC_SITE_URL` **scoped to Production only** — a preview build ignores it
+and uses its own `VERCEL_URL`, so that each preview names itself as canonical
+rather than production. Previews also serve a `robots.txt` that disallows
+everything.
+
+The browser almost never talks to the API cross-origin: client components post
+to the route handlers under `app/api/`, which proxy server-side. So changing
+preview hostnames costs nothing — but every mutation is one extra hop, which is
+worth remembering when picking the Vercel function region relative to where the
+API runs.
+
+The exception is `POST /payments/intent`, which the checkout page calls straight
+from the browser. One route, but it is enough that `WEB_ORIGIN` has to name the
+storefront's origin exactly, on any deployment.
+
+### The API on Railway
+
+Root directory `/`, and `railway.toml` supplies the rest: Dockerfile path,
+`prisma migrate deploy` as the pre-deploy command, and `/health` as the health
+check. Migrations deliberately do not run from the image's `CMD` — that would
+re-run them on every restart and every replica.
+
+```bash
+docker build -f apps/api/Dockerfile -t imix-api .   # from the repository root
+```
+
+`prisma` is a production dependency rather than a dev one: the release step runs
+`prisma migrate deploy`, so for this service the CLI is a runtime requirement.
+
+Required environment: `DATABASE_URL`, `WEB_ORIGIN` (the storefront's domain,
+comma-separated for several), and both `JWT_SECRET` and `JWT_REFRESH_SECRET` —
+the API refuses to start in production without them, by design. Generate each
+separately with `openssl rand -base64 32`.
+
+After the first deploy, run the seed once to create the ADMIN account; API
+registration only ever creates a plain USER, so this is the only way in.
+
+```bash
+ADMIN_EMAIL=… ADMIN_PASSWORD=… pnpm --filter api db:seed
+```
+
+### Uploads need Cloudinary before either of these is useful
+
+Unset, `POST /admin/upload` writes into `apps/web/public/uploads` and serves it
+from the storefront's origin — which only works while the API and the storefront
+share a disk. Deployed, they do not, and Vercel's filesystem is read-only
+besides: the admin's image picker appears to work and every URL it produces
+404s. Set `CLOUDINARY_URL` and the same code path uploads remotely instead.
+
+Storage elsewhere than Cloudinary also means adding its hostname to
+`images.remotePatterns` in `apps/web/next.config.ts` — that allowlist is what
+stops the shop's image optimiser being pointed at somebody else's server.
 
 ## Scripts
 

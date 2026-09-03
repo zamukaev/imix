@@ -1,0 +1,243 @@
+# Build once, deploy the thing that was built.
+#
+# The VPS has 2 GB of RAM and two cores; a `next build` there would compete with
+# the shop it is meant to replace. So images are built here, pushed to GHCR, and
+# the server only ever pulls.
+
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  # Validation only — see the guards on `build` and `deploy`. A workflow that
+  # runs for the first time on the commit that deploys it is one that gets
+  # debugged in production.
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # One deployment at a time. `cancel-in-progress: false` on purpose — killing a
+  # run halfway through `migrate` is how a database ends up in a state nobody
+  # planned for.
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '11.20.0'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      # The API's specs are end-to-end against a real Postgres — they are not
+      # mocked, and there is nothing useful to run without one.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: imix
+          POSTGRES_PASSWORD: imix
+          POSTGRES_DB: imix
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U imix -d imix"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://imix:imix@localhost:5432/imix?schema=public
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        run: pnpm --filter api db:deploy
+
+      # The specs read the catalogue rather than building one: they ask for
+      # `iphone-17-pro`, count the categories, and expect the home tiles to be
+      # there. A migrated-but-empty database fails 53 of them. Locally the seed
+      # ran once, months ago, and every run since has quietly depended on it.
+      - name: Seed the catalogue
+        env:
+          # Only the seed reads these, and only to create the first ADMIN. The
+          # account exists for the length of this job and is reachable by
+          # nothing.
+          ADMIN_EMAIL: admin@imix.test
+          ADMIN_PASSWORD: not-a-real-password
+        run: pnpm --filter api db:seed
+
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+
+      # `pnpm format:check` is deliberately absent: it has never passed on this
+      # repository, and a gate that is always red is not a gate.
+
+  build:
+    needs: validate
+    # A pull request gets its code checked, not its images published: the tag
+    # would name a commit that may never reach main, and NEXT_PUBLIC_* is baked
+    # in at build time, so a PR image is bound to production's domain while
+    # being no version of production.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      namespace: ${{ steps.meta.outputs.namespace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Work out image coordinates
+        id: meta
+        run: |
+          # GHCR rejects an uppercase letter anywhere in a repository path, and
+          # a GitHub account name may well have one.
+          namespace="ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          echo "namespace=$namespace" >> "$GITHUB_OUTPUT"
+          echo "tag=sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The storefront. NEXT_PUBLIC_* are not runtime configuration — Next
+      # substitutes them into the browser bundle right here, which is why they
+      # are build arguments and why this image is bound to one domain. They are
+      # repository *variables*, not secrets: every one of them is published to
+      # anyone who loads the page.
+      - name: Build and push imix-web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          # The VPS is x86_64. GitHub's ubuntu-latest runners are too, so this
+          # is what would be built anyway — pinned so that moving the job to an
+          # ARM runner produces a loud failure here rather than an image the
+          # server silently cannot run.
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.namespace }}/imix-web:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.namespace }}/imix-web:latest
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://${{ vars.API_DOMAIN }}
+            NEXT_PUBLIC_SITE_URL=https://${{ vars.DOMAIN }}
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      - name: Build and push imix-api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          target: runtime
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.namespace }}/imix-api:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.namespace }}/imix-api:latest
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      # The API's build stage, kept because it still has ts-node — which
+      # `prisma db seed` needs and the production install strips out. Shares
+      # every layer with the image above, so the push is nearly free.
+      - name: Build and push imix-api-tools
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          target: build
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.namespace }}/imix-api-tools:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.namespace }}/imix-api-tools:latest
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api-tools
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Ship it
+        uses: appleboy/ssh-action@v1
+        env:
+          IMAGE_TAG: ${{ needs.build.outputs.tag }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          envs: IMAGE_TAG,GHCR_USER,GHCR_TOKEN
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd /opt/imix
+
+            # The tag currently running, kept for the rollback line below.
+            previous=$(grep '^IMAGE_TAG=' .env | cut -d= -f2)
+            echo "Deploying $IMAGE_TAG (currently $previous)"
+
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+            sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" .env
+
+            docker compose -f docker-compose.production.yml pull
+            docker compose -f docker-compose.production.yml up -d db
+
+            # Once per release, before the new containers take traffic. Prisma
+            # has no down migrations, so this is a one-way step and every
+            # migration has to be readable by the version still running.
+            docker compose -f docker-compose.production.yml --profile tasks run --rm migrate
+
+            docker compose -f docker-compose.production.yml up -d --remove-orphans
+
+            echo "Waiting for the stack to report healthy…"
+            for i in $(seq 1 30); do
+              api=$(docker inspect -f '{{.State.Health.Status}}' imix-api 2>/dev/null || echo starting)
+              web=$(docker inspect -f '{{.State.Health.Status}}' imix-web 2>/dev/null || echo starting)
+              edge=$(docker inspect -f '{{.State.Health.Status}}' imix-nginx 2>/dev/null || echo starting)
+              echo "  [$i/30] api=$api web=$web nginx=$edge"
+              if [ "$api" = healthy ] && [ "$web" = healthy ] && [ "$edge" = healthy ]; then
+                echo "Deployed $IMAGE_TAG"
+                exit 0
+              fi
+              if [ "$api" = unhealthy ] || [ "$web" = unhealthy ]; then
+                break
+              fi
+              sleep 10
+            done
+
+            echo "::error::Deployment did not become healthy."
+            docker compose -f docker-compose.production.yml ps
+            docker compose -f docker-compose.production.yml logs --tail=80 backend frontend
+            echo
+            echo "Roll back with:"
+            echo "  cd /opt/imix"
+            echo "  sed -i 's|^IMAGE_TAG=.*|IMAGE_TAG=${previous}|' .env"
+            echo "  docker compose -f docker-compose.production.yml up -d"
+            exit 1
