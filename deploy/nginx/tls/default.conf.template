@@ -15,6 +15,17 @@ log_format imix '$remote_addr - $host "$request" $status $body_bytes_sent '
                 'rt=$request_time';
 access_log /var/log/nginx/access.log imix;
 
+# nginx resolves an upstream name once, when it starts, and then never again.
+# A deploy replaces the app containers and Docker hands the new ones different
+# addresses, so nginx keeps proxying to an address that now belongs to another
+# container — or to nothing at all. That is a 502 on every deploy in which
+# nginx itself happens not to be recreated, which is most of them.
+#
+# 127.0.0.11 is Docker's embedded DNS. It only takes effect together with the
+# variable in proxy_pass below: a literal name is resolved at startup no matter
+# what resolver is configured, a variable one is resolved per request.
+resolver 127.0.0.11 valid=10s ipv6=off;
+
 client_max_body_size 12m;
 
 gzip              on;
@@ -95,7 +106,8 @@ server {
     }
 
     location / {
-        proxy_pass http://frontend:3000;
+        set        $upstream_frontend frontend;
+        proxy_pass http://$upstream_frontend:3000;
         include    /etc/nginx/snippets/proxy.conf;
     }
 }
@@ -128,7 +140,8 @@ server {
     # CORS is the API's own decision, made from WEB_ORIGIN — nginx adding
     # headers here would either duplicate it or quietly override it.
     location / {
-        proxy_pass http://backend:4000;
+        set        $upstream_backend backend;
+        proxy_pass http://$upstream_backend:4000;
         include    /etc/nginx/snippets/proxy.conf;
     }
 }
