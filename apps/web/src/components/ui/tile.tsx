@@ -111,16 +111,24 @@ export function Tile({
         // the ground on a tile that has no image yet.
         // `fill` rather than a width and a height: the artwork is far wider than
         // any tile and its intrinsic size is not the point — the tile's own box
-        // is. `sizes="100vw"` says so, and keeps the optimiser from serving a
-        // 640px file for a full-bleed banner.
-        <Image
-          src={media.src}
-          alt={media.alt}
-          fill
-          sizes="100vw"
-          priority={media.priority}
-          className="object-cover object-center"
-        />
+        // is.
+        //
+        // Below `sm` that stops working: a phone tile is portrait, and covering
+        // it with a 4:1 banner keeps only the middle tenth — the device is cut
+        // off at both sides. There the artwork becomes a band at the foot of
+        // the tile (`--spacing-tile-media-sm`), short enough that the whole
+        // device fits the width, with the tile's surface as the ground above.
+        // The band is wider than the viewport, hence the fixed `sizes` hint.
+        <div className="h-tile-media-sm absolute inset-x-0 bottom-0 sm:inset-0 sm:h-auto">
+          <Image
+            src={media.src}
+            alt={media.alt}
+            fill
+            sizes="(min-width: 640px) 100vw, 1700px"
+            priority={media.priority}
+            className="object-cover object-bottom sm:object-center"
+          />
+        </div>
       ) : null}
 
       <div

@@ -98,6 +98,14 @@
   --spacing-tile: max(88svh, 48rem);
   --spacing-tile-half: max(62svh, 42rem);
   /*
+   * Height of the artwork band on a phone, where the tile is too narrow for
+   * `object-cover` over the whole tile: the banners are 2.2:1 to 4.3:1, so
+   * covering a 375×770 tile shows ~11 % of their width and cuts the device.
+   * At 24rem the widest hero renders ~1670px wide and its device group — ~20 %
+   * of the frame — ~340px, inside a 375px screen.
+   */
+  --spacing-tile-media-sm: 24rem;
+  /*
    * One model card in the category carousel. Fixed rather than fractional, so
    * the next card is cut off by the viewport edge at every width — that sliver
    * is what says the row scrolls.

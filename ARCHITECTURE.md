@@ -629,6 +629,12 @@ The rules that make it work, and that we adopt:
   preserves the vertical placement the photographer framed. The tile's own
   `surface` then only decides the text colour, and shows as the ground on a tile
   that has no image yet.
+- **Except below `sm`.** A phone tile is portrait, and a 2:1–4:1 banner covering
+  it keeps only its middle tenth — the device is cut at both sides. There the
+  artwork is a band at the foot of the tile (`--spacing-tile-media-sm`), short
+  enough that the whole device fits the width, with the tile's `surface` as the
+  ground above it. This is the one place the seam from "one surface" is
+  accepted: a faint colour step beats a device with no edges.
 
 ### 5.1.1 Primitives
 
