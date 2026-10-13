@@ -10,6 +10,7 @@ import { getOrderOrNull } from '@/lib/api';
 import { formatCountry, formatDateTime, formatMoney } from '@/lib/format';
 import { getRequestContext } from '@/lib/request-context';
 import { MAIN_CONTENT_ID } from '@/lib/main-content';
+import { isServedAsStored } from '@/lib/image-source';
 
 type OrderPageProps = {
   params: Promise<{ id: string; locale: Locale }>;
@@ -121,6 +122,7 @@ async function OrderLines({ order, locale }: { order: OrderDto; locale: Locale }
               {item.image ? (
                 <Image
                   src={item.image}
+                  unoptimized={isServedAsStored(item.image)}
                   alt=""
                   width={128}
                   height={128}

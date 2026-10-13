@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
 import type { ProductListItemDto } from '@imix/types';
 import { Link } from '@/i18n/navigation';
+import { isServedAsStored } from '@/lib/image-source';
 
 /**
  * The model rail at the top of a category page — one chip per model, each a
@@ -20,14 +21,6 @@ import { Link } from '@/i18n/navigation';
 
 /** Rendered size of a chip's artwork. Mirrored in `sizes` below. */
 const CHIP_PX = 56;
-
-/**
- * Next's image optimiser refuses SVG unless the whole app opts in with
- * `dangerouslyAllowSVG`, which would apply to every uploaded file too. A vector
- * has nothing to optimise at 56px anyway, so it is served as-is and the flag
- * stays off.
- */
-const isVector = (src: string): boolean => src.toLowerCase().endsWith('.svg');
 
 type CategoryModelNavProps = {
   products: ProductListItemDto[];
@@ -73,7 +66,7 @@ export async function CategoryModelNav({ products }: CategoryModelNavProps) {
                     // the fold; lazy-loading them only buys a visibly empty row
                     // on first paint. They are 56px — there is nothing to defer.
                     loading="eager"
-                    unoptimized={isVector(image)}
+                    unoptimized={isServedAsStored(image)}
                     // Contain and bottom-align, the same rule the model cards
                     // follow — ARCHITECTURE.md §5.8.
                     className="h-14 w-14 object-contain object-bottom"

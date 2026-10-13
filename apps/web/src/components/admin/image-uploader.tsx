@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { uploadAsset } from '@/lib/admin-api';
 import { toUserMessage } from '@/lib/api';
+import { isServedAsStored } from '@/lib/image-source';
 
 type ImageUploaderProps = {
   images: string[];
@@ -85,6 +86,7 @@ export function ImageUploader({
             >
               <Image
                 src={url}
+                unoptimized={isServedAsStored(url)}
                 alt=""
                 width={192}
                 height={192}
