@@ -31,10 +31,18 @@ type TileSize = 'full' | 'half';
  */
 const SIZES: Record<
   TileSize,
-  { section: string; headline: string; subhead: string; pad: string }
+  {
+    section: string;
+    /** Below `sm` a tile with artwork is as tall as its copy plus the band. */
+    sectionWithMedia: string;
+    headline: string;
+    subhead: string;
+    pad: string;
+  }
 > = {
   full: {
     section: 'min-h-tile',
+    sectionWithMedia: 'sm:min-h-tile',
     // Display type only from `lg` up. Not a wrapping concern — it is the copy
     // *block* height: at 72px the headline, subhead and pills together outgrow
     // the top ~39% of the tile that the artwork reserves for them, and the
@@ -46,6 +54,7 @@ const SIZES: Record<
   },
   half: {
     section: 'min-h-tile-half',
+    sectionWithMedia: 'sm:min-h-tile-half',
     headline: 'text-subhead lg:text-headline',
     subhead: 'text-base lg:text-lg',
     pad: 'px-6 pt-12 sm:pt-16',
@@ -95,7 +104,7 @@ export function Tile({
       className={[
         'relative flex flex-col items-center overflow-hidden text-center',
         SURFACES[surface],
-        scale.section,
+        media ? scale.sectionWithMedia : scale.section,
       ].join(' ')}
     >
       {media ? (
@@ -115,19 +124,24 @@ export function Tile({
         //
         // Below `sm` that stops working: a phone tile is portrait, and covering
         // it with a 4:1 banner keeps only the middle tenth — the device is cut
-        // off at both sides. There the artwork becomes a band at the foot of
-        // the tile (`--spacing-tile-media-sm`), short enough that the whole
-        // device fits the width, with the tile's surface as the ground above.
-        // The band is wider than the viewport, hence the fixed `sizes` hint.
-        <div className="h-tile-media-sm absolute inset-x-0 bottom-0 sm:inset-0 sm:h-auto">
-          <Image
-            src={media.src}
-            alt={media.alt}
-            fill
-            sizes="(min-width: 640px) 100vw, 1700px"
-            priority={media.priority}
-            className="object-cover object-bottom sm:object-center"
-          />
+        // off at both sides. There the artwork becomes a band in the flow,
+        // a fixed gap under the actions (`order-last`, so the DOM order that
+        // keeps the copy painted above the artwork on wider screens stays).
+        // It is rendered `tile-art-sm` tall, short enough that the whole device
+        // fits the width, and shown `tile-media-sm` tall from the bottom, which
+        // trims the empty headroom the banners keep for desktop copy. The
+        // artwork is wider than the viewport, hence the fixed `sizes` hint.
+        <div className="relative order-last mt-tile-media-gap-sm h-tile-media-sm w-full overflow-hidden sm:absolute sm:inset-0 sm:order-none sm:mt-0 sm:h-auto">
+          <div className="absolute inset-x-0 bottom-0 h-tile-art-sm sm:inset-0 sm:h-auto">
+            <Image
+              src={media.src}
+              alt={media.alt}
+              fill
+              sizes="(min-width: 640px) 100vw, 1700px"
+              priority={media.priority}
+              className="object-cover object-bottom sm:object-center"
+            />
+          </div>
         </div>
       ) : null}
 
