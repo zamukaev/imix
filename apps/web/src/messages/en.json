@@ -45,7 +45,18 @@
     "lowStock": "{count, plural, one {Only # left} other {Only # left}}",
     "inStock": "In stock",
     "galleryAlt": "{product} — view {index} of {total}",
-    "showView": "Show view {index}"
+    "showView": "Show view {index}",
+    "mediaSwitch": "Product view",
+    "mediaPhoto": "Photo",
+    "mediaModel": "3D",
+    "modelAlt": "{product} — three-dimensional model",
+    "modelHint": "Drag to rotate",
+    "modelUnavailable": "The 3D model did not load",
+    "colorGroup": "Colour choice",
+    "colorLabel": "Colour — {color}",
+    "previousImage": "Previous image",
+    "nextImage": "Next image",
+    "chooseImage": "Choose an image"
   },
   "cart": {
     "title": "Cart",
@@ -244,7 +255,24 @@
     "confirmDeleteTile": "Really delete?",
     "moveUp": "Move up",
     "moveDown": "Move down",
-    "edit": "Edit"
+    "edit": "Edit",
+    "colorsLegend": "Colours",
+    "colorsNote": "A colour belongs to the product and variants point at it. Photos are uploaded per colour: 256GB and 512GB in lavender are the same device.",
+    "noColors": "No colours yet. Without them the product counts as single-finish and the storefront shows no swatches.",
+    "addColor": "Add a colour",
+    "removeColor": "Remove colour",
+    "colorSlug": "Colour slug",
+    "colorSlugHint": "Lowercase words joined by hyphens. Locked once variants point at it.",
+    "colorNameRu": "Colour name (RU)",
+    "colorNameEn": "Colour name (EN)",
+    "colorHex": "Swatch",
+    "colorHexHint": "Format #rrggbb.",
+    "colorPick": "Pick a swatch colour",
+    "colorImages": "Photos of this colour",
+    "colorImagesHint": "Empty falls back to the product’s own photos in the gallery.",
+    "colorInUse": "Variants still point at this colour — move them to another one first.",
+    "colorNone": "No colour",
+    "colorNoneDefined": "Add colours above first."
   },
   "validation": {
     "email": "Enter an email address so we can send the confirmation",
@@ -262,7 +290,8 @@
     "cityTooLong": "That city name is too long",
     "zip": "Enter a postal code",
     "zipTooLong": "That postal code is too long",
-    "country": "Pick a country we ship to"
+    "country": "Pick a country we ship to",
+    "hex": "Enter a swatch colour as #rrggbb."
   },
   "order": {
     "headlinePending": "Almost done",

@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import type { Currency, ProductVariantDto } from '@imix/types';
 import { useMoney } from '@/components/currency-provider';
+import { useProductColor } from '@/components/product-color-context';
 import { Button } from '@/components/ui/button';
+import { variantsForColor } from '@/lib/product-colors';
 import { useCartStore } from '@/stores/cart-store';
 
 const LOW_STOCK_THRESHOLD = 5;
@@ -35,14 +37,25 @@ export function ProductPurchasePanel({
   brand,
   currency,
   image,
-  variants,
+  variants: allVariants,
 }: ProductPurchasePanelProps) {
   const t = useTranslations('product');
   const locale = useLocale();
   const money = useMoney();
-  const [selectedId, setSelectedId] = useState(variants[0]?.id ?? '');
+  const { selectedId: colorId } = useProductColor();
+  const [selectedId, setSelectedId] = useState(allVariants[0]?.id ?? '');
   const [justAdded, setJustAdded] = useState(false);
   const addItem = useCartStore((state) => state.addItem);
+
+  // Colour first, then configuration: once a finish is chosen this list is only
+  // the configurations it comes in, so a shopper cannot assemble a pairing that
+  // is not sold.
+  const variants = variantsForColor(allVariants, colorId);
+
+  // Falling back to the first of the *filtered* list is what makes the two
+  // pickers agree: switching colour usually invalidates the chosen variant, and
+  // the panel then shows the cheapest one of the new finish rather than a stale
+  // price from the old.
   const selected = variants.find((variant) => variant.id === selectedId) ?? variants[0];
 
   if (!selected) {

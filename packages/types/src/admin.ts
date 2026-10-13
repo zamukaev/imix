@@ -44,12 +44,38 @@ export type CategoryWriteRequest = {
   nameEn: string;
 };
 
+/** One finish, as the admin edits it. */
+export type AdminColorDto = {
+  id: string;
+  slug: string;
+  nameRu: string;
+  nameEn: string;
+  /** `#rrggbb`. */
+  hex: string;
+  images: string[];
+  position: number;
+  /**
+   * True while a variant still names this colour. Deleting it would leave those
+   * variants without a finish, so the admin has to move them off it first.
+   */
+  inUse: boolean;
+};
+
+export type ColorWriteRequest = {
+  slug: string;
+  nameRu: string;
+  nameEn: string;
+  hex: string;
+  images: string[];
+};
+
 export type AdminVariantDto = {
   id: string;
   sku: string;
   labelRu: string;
   labelEn: string;
-  color: string | null;
+  /** Id of one of the product's colours, or null for a single-finish product. */
+  colorId: string | null;
   config: string | null;
   priceRub: Money;
   priceUsd: Money;
@@ -66,7 +92,12 @@ export type VariantWriteRequest = {
   sku: string;
   labelRu: string;
   labelEn: string;
-  color?: string | null;
+  /**
+   * A colour's `slug`, not its id: the request that creates a product's colours
+   * is the one that creates its variants, so an id does not exist yet on the
+   * client. The API resolves it against the colours in the same body.
+   */
+  colorSlug?: string | null;
   config?: string | null;
   priceRub: Money;
   priceUsd: Money;
@@ -105,6 +136,8 @@ export type AdminProductDto = AdminProductListItemDto & {
   /** Which tab of the category page this model sits under; null means none. */
   groupId: string | null;
   model3dUrl: string | null;
+  /** In display order — the order the swatch row uses. */
+  colors: AdminColorDto[];
   variants: AdminVariantDto[];
 };
 
@@ -126,6 +159,12 @@ export type ProductWriteRequest = {
   navImageUrl?: string | null;
   model3dUrl?: string | null;
   featured: boolean;
+  /**
+   * The product's finishes, in display order. The whole list every time: a
+   * colour missing from it is deleted, which is how the variant list already
+   * works and keeps one product edit to one request.
+   */
+  colors?: ColorWriteRequest[];
 };
 
 /**

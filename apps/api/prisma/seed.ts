@@ -46,12 +46,39 @@ function usd(major: number, cents = 0): number {
   return major * MINOR_UNITS_PER_MAJOR + cents;
 }
 
+/**
+ * Every finish the catalogue sells, by slug.
+ *
+ * Central rather than repeated per product because the same finish appears on
+ * several: "Midnight" is one colour with one Russian name and one swatch, and
+ * two products disagreeing about its hex is a bug nobody would ever notice.
+ *
+ * The hexes approximate the manufacturer's finishes. They are the swatch, not a
+ * design token — see the note on `ProductColor` in the schema.
+ */
+const COLOURS = {
+  'black-titanium': { nameRu: 'Чёрный титан', nameEn: 'Black Titanium', hex: '#46444a' },
+  'natural-titanium': { nameRu: 'Натуральный титан', nameEn: 'Natural Titanium', hex: '#c4bfb8' },
+  'space-black': { nameRu: 'Космический чёрный', nameEn: 'Space Black', hex: '#2b2b2d' },
+  midnight: { nameRu: 'Тёмная ночь', nameEn: 'Midnight', hex: '#1f2430' },
+  starlight: { nameRu: 'Сияющая звезда', nameEn: 'Starlight', hex: '#f0e8dc' },
+  silver: { nameRu: 'Серебристый', nameEn: 'Silver', hex: '#e3e4e6' },
+  white: { nameRu: 'Белый', nameEn: 'White', hex: '#f2f2f4' },
+  blue: { nameRu: 'Синий', nameEn: 'Blue', hex: '#5b7fa6' },
+  'sky-blue': { nameRu: 'Небесно-голубой', nameEn: 'Sky Blue', hex: '#b8cfe0' },
+  ultramarine: { nameRu: 'Ультрамарин', nameEn: 'Ultramarine', hex: '#6a7fd4' },
+  purple: { nameRu: 'Фиолетовый', nameEn: 'Purple', hex: '#d0c3e8' },
+  pink: { nameRu: 'Розовый', nameEn: 'Pink', hex: '#f2d5da' },
+} as const satisfies Record<string, { nameRu: string; nameEn: string; hex: string }>;
+
+type ColourSlug = keyof typeof COLOURS;
+
 type VariantSeed = {
   sku: string;
   labelRu: string;
   labelEn: string;
   /** Null where the product comes in one finish — an AirTag has no colour. */
-  color: string | null;
+  colorSlug: ColourSlug | null;
   config: string;
   priceRub: number;
   priceUsd: number;
@@ -77,6 +104,14 @@ type ProductSeed = {
   images: string[];
   /** Cutout for the model rail; omitted where there is no artwork for one yet. */
   navImageUrl?: string;
+  /**
+   * `.glb` for the 3D viewer. The seeded values point at the generic
+   * placeholder slabs in `apps/web/public/models` — iMIX does not ship
+   * Apple-owned 3D assets (CLAUDE.md, "Hard constraints"), so these stand in
+   * until self-authored per-device models exist. Swapping one is an admin edit,
+   * not a code change.
+   */
+  model3dUrl?: string;
   /** Tab of the category page, by slug. Omitted where the line has no tabs. */
   group?: string;
   featured: boolean;
@@ -152,13 +187,14 @@ const productsByCategory: Record<string, ProductSeed[]> = {
       basePriceUsd: usd(1099),
       images: ['/products/iphone-17-pro-1.jpg'],
       navImageUrl: '/products/nav/iphone-17-pro.png',
+      model3dUrl: '/models/placeholder-phone.glb',
       featured: true,
       variants: [
         {
           sku: 'APL-I17P-256-BLK',
           labelRu: '256 ГБ · Чёрный титан',
           labelEn: '256GB · Black Titanium',
-          color: 'Black Titanium',
+          colorSlug: 'black-titanium',
           config: '256 GB',
           priceRub: rub(149990),
           priceUsd: usd(1099),
@@ -168,7 +204,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-I17P-512-BLK',
           labelRu: '512 ГБ · Чёрный титан',
           labelEn: '512GB · Black Titanium',
-          color: 'Black Titanium',
+          colorSlug: 'black-titanium',
           config: '512 GB',
           priceRub: rub(174990),
           priceUsd: usd(1299),
@@ -178,7 +214,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-I17P-512-NAT',
           labelRu: '512 ГБ · Натуральный титан',
           labelEn: '512GB · Natural Titanium',
-          color: 'Natural Titanium',
+          colorSlug: 'natural-titanium',
           config: '512 GB',
           priceRub: rub(174990),
           priceUsd: usd(1299),
@@ -207,7 +243,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-IAIR-256-SKY',
           labelRu: '256 ГБ · Небесно-голубой',
           labelEn: '256GB · Sky Blue',
-          color: 'Sky Blue',
+          colorSlug: 'sky-blue',
           config: '256 GB',
           priceRub: rub(124990),
           priceUsd: usd(999),
@@ -217,7 +253,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-IAIR-512-SKY',
           labelRu: '512 ГБ · Небесно-голубой',
           labelEn: '512GB · Sky Blue',
-          color: 'Sky Blue',
+          colorSlug: 'sky-blue',
           config: '512 GB',
           priceRub: rub(144990),
           priceUsd: usd(1199),
@@ -246,7 +282,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-I17-256-MID',
           labelRu: '256 ГБ · Тёмная ночь',
           labelEn: '256GB · Midnight',
-          color: 'Midnight',
+          colorSlug: 'midnight',
           config: '256 GB',
           priceRub: rub(99990),
           priceUsd: usd(799),
@@ -256,7 +292,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-I17-512-MID',
           labelRu: '512 ГБ · Тёмная ночь',
           labelEn: '512GB · Midnight',
-          color: 'Midnight',
+          colorSlug: 'midnight',
           config: '512 GB',
           priceRub: rub(119990),
           priceUsd: usd(999),
@@ -285,7 +321,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-I17E-128-PNK',
           labelRu: '128 ГБ · Розовый',
           labelEn: '128GB · Pink',
-          color: 'Pink',
+          colorSlug: 'pink',
           config: '128 GB',
           priceRub: rub(74990),
           priceUsd: usd(599),
@@ -295,7 +331,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-I17E-256-PNK',
           labelRu: '256 ГБ · Розовый',
           labelEn: '256GB · Pink',
-          color: 'Pink',
+          colorSlug: 'pink',
           config: '256 GB',
           priceRub: rub(84990),
           priceUsd: usd(699),
@@ -324,7 +360,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-I16-128-ULT',
           labelRu: '128 ГБ · Ультрамарин',
           labelEn: '128GB · Ultramarine',
-          color: 'Ultramarine',
+          colorSlug: 'ultramarine',
           config: '128 GB',
           priceRub: rub(84990),
           priceUsd: usd(699),
@@ -334,7 +370,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-I16-256-ULT',
           labelRu: '256 ГБ · Ультрамарин',
           labelEn: '256GB · Ultramarine',
-          color: 'Ultramarine',
+          colorSlug: 'ultramarine',
           config: '256 GB',
           priceRub: rub(94990),
           priceUsd: usd(799),
@@ -359,6 +395,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
       basePriceUsd: usd(1199),
       images: ['/products/macbook-air-15-m5-1.jpg'],
       navImageUrl: '/products/nav/macbook-air-15-m5.png',
+      model3dUrl: '/models/placeholder-laptop.glb',
       group: 'laptops',
       featured: true,
       variants: [
@@ -366,7 +403,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-MBA15-16-512-SLV',
           labelRu: '16 ГБ · 512 ГБ · Серебристый',
           labelEn: '16GB · 512GB · Silver',
-          color: 'Silver',
+          colorSlug: 'silver',
           config: '16 GB RAM · 512 GB SSD',
           priceRub: rub(159990),
           priceUsd: usd(1199),
@@ -376,7 +413,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-MBA15-24-1TB-MID',
           labelRu: '24 ГБ · 1 ТБ · Тёмная ночь',
           labelEn: '24GB · 1TB · Midnight',
-          color: 'Midnight',
+          colorSlug: 'midnight',
           config: '24 GB RAM · 1 TB SSD',
           priceRub: rub(189990),
           priceUsd: usd(1399),
@@ -399,6 +436,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
       basePriceUsd: usd(2499),
       images: ['/products/macbook-pro-16-m5-1.jpg'],
       navImageUrl: '/products/nav/macbook-pro-16-m5-pro.png',
+      model3dUrl: '/models/placeholder-laptop.glb',
       group: 'laptops',
       featured: false,
       variants: [
@@ -406,7 +444,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-MBP16-24-512-SPB',
           labelRu: '24 ГБ · 512 ГБ · Космический чёрный',
           labelEn: '24GB · 512GB · Space Black',
-          color: 'Space Black',
+          colorSlug: 'space-black',
           config: '24 GB RAM · 512 GB SSD',
           priceRub: rub(279990),
           priceUsd: usd(2499),
@@ -416,7 +454,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-MBP16-48-1TB-SPB',
           labelRu: '48 ГБ · 1 ТБ · Космический чёрный',
           labelEn: '48GB · 1TB · Space Black',
-          color: 'Space Black',
+          colorSlug: 'space-black',
           config: '48 GB RAM · 1 TB SSD',
           priceRub: rub(349990),
           priceUsd: usd(3099),
@@ -447,7 +485,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-IMAC24-16-256-BLU',
           labelRu: '16 ГБ · 256 ГБ · Синий',
           labelEn: '16GB · 256GB · Blue',
-          color: 'Blue',
+          colorSlug: 'blue',
           config: '16 GB / 256 GB',
           priceRub: rub(139990),
           priceUsd: usd(1299),
@@ -457,7 +495,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-IMAC24-24-512-BLU',
           labelRu: '24 ГБ · 512 ГБ · Синий',
           labelEn: '24GB · 512GB · Blue',
-          color: 'Blue',
+          colorSlug: 'blue',
           config: '24 GB / 512 GB',
           priceRub: rub(169990),
           priceUsd: usd(1599),
@@ -487,7 +525,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-MINI-16-256',
           labelRu: '16 ГБ · 256 ГБ',
           labelEn: '16GB · 256GB',
-          color: null,
+          colorSlug: null,
           config: '16 GB / 256 GB',
           priceRub: rub(64990),
           priceUsd: usd(599),
@@ -497,7 +535,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-MINI-24-512',
           labelRu: '24 ГБ · 512 ГБ',
           labelEn: '24GB · 512GB',
-          color: null,
+          colorSlug: null,
           config: '24 GB / 512 GB',
           priceRub: rub(89990),
           priceUsd: usd(799),
@@ -527,7 +565,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-STUDIO-36-512',
           labelRu: '36 ГБ · 512 ГБ',
           labelEn: '36GB · 512GB',
-          color: null,
+          colorSlug: null,
           config: '36 GB / 512 GB',
           priceRub: rub(259990),
           priceUsd: usd(2299),
@@ -537,7 +575,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-STUDIO-48-1TB',
           labelRu: '48 ГБ · 1 ТБ',
           labelEn: '48GB · 1TB',
-          color: null,
+          colorSlug: null,
           config: '48 GB / 1 TB',
           priceRub: rub(319990),
           priceUsd: usd(2899),
@@ -568,7 +606,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-SD27-STD-TILT',
           labelRu: 'Стандартное стекло · наклонная подставка',
           labelEn: 'Standard glass · tilt stand',
-          color: null,
+          colorSlug: null,
           config: 'Standard glass',
           priceRub: rub(169990),
           priceUsd: usd(1599),
@@ -578,7 +616,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-SD27-NANO-TILT',
           labelRu: 'Нанотекстурное стекло · наклонная подставка',
           labelEn: 'Nano-texture glass · tilt stand',
-          color: null,
+          colorSlug: null,
           config: 'Nano-texture glass',
           priceRub: rub(199990),
           priceUsd: usd(1899),
@@ -608,7 +646,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-SDXDR32-STD',
           labelRu: 'Стандартное стекло',
           labelEn: 'Standard glass',
-          color: null,
+          colorSlug: null,
           config: 'Standard glass',
           priceRub: rub(549990),
           priceUsd: usd(4999),
@@ -618,7 +656,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-SDXDR32-NANO',
           labelRu: 'Нанотекстурное стекло',
           labelEn: 'Nano-texture glass',
-          color: null,
+          colorSlug: null,
           config: 'Nano-texture glass',
           priceRub: rub(609990),
           priceUsd: usd(5599),
@@ -649,7 +687,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-IPA13-128-BLU',
           labelRu: '128 ГБ · Синий · Wi-Fi',
           labelEn: '128GB · Blue · Wi-Fi',
-          color: 'Blue',
+          colorSlug: 'blue',
           config: '128 GB · Wi-Fi',
           priceRub: rub(99990),
           priceUsd: usd(799),
@@ -659,7 +697,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-IPA13-256-BLU',
           labelRu: '256 ГБ · Синий · Wi-Fi',
           labelEn: '256GB · Blue · Wi-Fi',
-          color: 'Blue',
+          colorSlug: 'blue',
           config: '256 GB · Wi-Fi',
           priceRub: rub(114990),
           priceUsd: usd(899),
@@ -669,7 +707,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-IPA13-256-STL',
           labelRu: '256 ГБ · Серый · Wi-Fi + 5G',
           labelEn: '256GB · Starlight · Wi-Fi + 5G',
-          color: 'Starlight',
+          colorSlug: 'starlight',
           config: '256 GB · Wi-Fi + 5G',
           priceRub: rub(134990),
           priceUsd: usd(1049),
@@ -698,7 +736,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-IPP13-256-SPB',
           labelRu: '256 ГБ · Космический чёрный',
           labelEn: '256GB · Space Black',
-          color: 'Space Black',
+          colorSlug: 'space-black',
           config: '256 GB · Wi-Fi',
           priceRub: rub(179990),
           priceUsd: usd(1299),
@@ -708,7 +746,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-IPP13-512-SPB',
           labelRu: '512 ГБ · Космический чёрный',
           labelEn: '512GB · Space Black',
-          color: 'Space Black',
+          colorSlug: 'space-black',
           config: '512 GB · Wi-Fi',
           priceRub: rub(209990),
           priceUsd: usd(1499),
@@ -737,7 +775,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-IPAD11-128-SLV',
           labelRu: '128 ГБ · Серебристый',
           labelEn: '128GB · Silver',
-          color: 'Silver',
+          colorSlug: 'silver',
           config: '128 GB · Wi-Fi',
           priceRub: rub(39990),
           priceUsd: usd(349),
@@ -747,7 +785,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-IPAD11-256-SLV',
           labelRu: '256 ГБ · Серебристый',
           labelEn: '256GB · Silver',
-          color: 'Silver',
+          colorSlug: 'silver',
           config: '256 GB · Wi-Fi',
           priceRub: rub(49990),
           priceUsd: usd(449),
@@ -776,7 +814,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-IPADMINI-128-PRP',
           labelRu: '128 ГБ · Фиолетовый',
           labelEn: '128GB · Purple',
-          color: 'Purple',
+          colorSlug: 'purple',
           config: '128 GB · Wi-Fi',
           priceRub: rub(54990),
           priceUsd: usd(499),
@@ -786,7 +824,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-IPADMINI-256-PRP',
           labelRu: '256 ГБ · Фиолетовый',
           labelEn: '256GB · Purple',
-          color: 'Purple',
+          colorSlug: 'purple',
           config: '256 GB · Wi-Fi',
           priceRub: rub(64990),
           priceUsd: usd(599),
@@ -817,7 +855,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-AW11-42-ALU-STL',
           labelRu: '42 мм · Алюминий · Сияющая звезда',
           labelEn: '42mm · Aluminium · Starlight',
-          color: 'Starlight',
+          colorSlug: 'starlight',
           config: '42 mm · GPS',
           priceRub: rub(44990),
           priceUsd: usd(429),
@@ -827,7 +865,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-AW11-46-ALU-BLK',
           labelRu: '46 мм · Алюминий · Тёмная ночь',
           labelEn: '46mm · Aluminium · Midnight',
-          color: 'Midnight',
+          colorSlug: 'midnight',
           config: '46 mm · GPS',
           priceRub: rub(49990),
           priceUsd: usd(469),
@@ -837,7 +875,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-AW11-46-TIT-NAT',
           labelRu: '46 мм · Титан · Натуральный',
           labelEn: '46mm · Titanium · Natural',
-          color: 'Natural Titanium',
+          colorSlug: 'natural-titanium',
           config: '46 mm · GPS + Cellular',
           priceRub: rub(84990),
           priceUsd: usd(799),
@@ -866,7 +904,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-AWSE3-40-ALU-MID',
           labelRu: '40 мм · Алюминий · Тёмная ночь',
           labelEn: '40mm · Aluminium · Midnight',
-          color: 'Midnight',
+          colorSlug: 'midnight',
           config: '40 mm · GPS',
           priceRub: rub(27990),
           priceUsd: usd(249),
@@ -876,7 +914,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-AWSE3-44-ALU-MID',
           labelRu: '44 мм · Алюминий · Тёмная ночь',
           labelEn: '44mm · Aluminium · Midnight',
-          color: 'Midnight',
+          colorSlug: 'midnight',
           config: '44 mm · GPS',
           priceRub: rub(31990),
           priceUsd: usd(279),
@@ -905,7 +943,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-AWU3-49-TIT-NAT',
           labelRu: '49 мм · Титан · Натуральный',
           labelEn: '49mm · Titanium · Natural',
-          color: 'Natural Titanium',
+          colorSlug: 'natural-titanium',
           config: '49 mm · GPS + Cellular',
           priceRub: rub(94990),
           priceUsd: usd(799),
@@ -915,7 +953,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-AWU3-49-TIT-BLK',
           labelRu: '49 мм · Титан · Чёрный',
           labelEn: '49mm · Titanium · Black',
-          color: 'Black Titanium',
+          colorSlug: 'black-titanium',
           config: '49 mm · GPS + Cellular',
           priceRub: rub(99990),
           priceUsd: usd(849),
@@ -945,7 +983,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-APP3-USBC',
           labelRu: 'Белые · USB-C',
           labelEn: 'White · USB-C',
-          color: 'White',
+          colorSlug: 'white',
           config: 'USB-C charging case',
           priceRub: rub(24990),
           priceUsd: usd(249),
@@ -975,7 +1013,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-AIRTAG-1PK',
           labelRu: '1 штука',
           labelEn: '1 pack',
-          color: null,
+          colorSlug: null,
           config: '1 pack',
           priceRub: rub(3490),
           priceUsd: usd(29),
@@ -985,7 +1023,7 @@ const productsByCategory: Record<string, ProductSeed[]> = {
           sku: 'APL-AIRTAG-4PK',
           labelRu: '4 штуки',
           labelEn: '4 pack',
-          color: null,
+          colorSlug: null,
           config: '4 pack',
           priceRub: rub(11990),
           priceUsd: usd(99),
@@ -1237,11 +1275,46 @@ async function main(): Promise<void> {
         create: { ...productData, categoryId: saved.id, groupId },
       });
 
-      for (const variant of variants) {
+      // A product's finishes are derived from its variants rather than listed
+      // again beside them: the variants already say which colours exist, and a
+      // second list would be a second thing to keep in step. First appearance
+      // sets the order, so the swatch row reads in the order the variants do.
+      const colourSlugs = [
+        ...new Set(
+          variants
+            .map((variant) => variant.colorSlug)
+            .filter((slug): slug is ColourSlug => slug !== null),
+        ),
+      ];
+
+      const colourIds = new Map<ColourSlug, string>();
+
+      for (const [position, colourSlug] of colourSlugs.entries()) {
+        const savedColour = await prisma.productColor.upsert({
+          where: { productId_slug: { productId: savedProduct.id, slug: colourSlug } },
+          // No images: there is one photograph per product in this catalogue and
+          // it is not of any particular finish. The gallery falls back to the
+          // product's own images, and an admin uploading per-colour shots is
+          // what turns the swatches into a preview.
+          update: { ...COLOURS[colourSlug], position },
+          create: {
+            ...COLOURS[colourSlug],
+            slug: colourSlug,
+            position,
+            productId: savedProduct.id,
+          },
+        });
+
+        colourIds.set(colourSlug, savedColour.id);
+      }
+
+      for (const { colorSlug, ...variant } of variants) {
+        const colorId = colorSlug === null ? null : (colourIds.get(colorSlug) ?? null);
+
         await prisma.productVariant.upsert({
           where: { sku: variant.sku },
-          update: { ...variant, productId: savedProduct.id },
-          create: { ...variant, productId: savedProduct.id },
+          update: { ...variant, colorId, productId: savedProduct.id },
+          create: { ...variant, colorId, productId: savedProduct.id },
         });
       }
     }

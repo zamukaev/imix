@@ -3,6 +3,17 @@ import { LOCALES, type Locale } from '@imix/types';
 import { getPathname } from '@/i18n/navigation';
 import { routing } from '@/i18n/routing';
 
+const DEFAULT_SITE_URL = 'http://localhost:3000';
+
+/**
+ * True while building or serving a Vercel preview deployment.
+ *
+ * Preview builds are the same code on a throwaway hostname, and the difference
+ * matters twice: for the URL below, and for what `robots.ts` lets a crawler do
+ * with it.
+ */
+export const isPreviewDeployment = process.env.VERCEL_ENV === 'preview';
+
 /**
  * Where this shop lives, absolutely.
  *
@@ -11,10 +22,24 @@ import { routing } from '@/i18n/routing';
  * development works without configuration; a deployment that forgets to set this
  * gets canonical tags pointing at a machine nobody can reach, which is why it is
  * the first thing listed in `.env.example`.
+ *
+ * A Vercel preview is the exception, and only a preview. Every push gets a fresh
+ * hostname, so the configured `NEXT_PUBLIC_SITE_URL` — baked in at build time —
+ * would have each preview claim production as its canonical. `VERCEL_URL` is the
+ * only value that knows the host this particular build is served from. It is
+ * read without a `NEXT_PUBLIC_` prefix on purpose: `siteUrl` is used by
+ * `sitemap.ts`, `robots.ts` and `generateMetadata`, all of which run on the
+ * server, so the browser never needs it.
  */
-export const siteUrl = new URL(
-  process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
-);
+function resolveSiteUrl(): string {
+  if (isPreviewDeployment && process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+
+  return process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_URL;
+}
+
+export const siteUrl = new URL(resolveSiteUrl());
 
 /** Whatever `getPathname` accepts, kept in step with it rather than restated. */
 type LocalisedHref = Parameters<typeof getPathname>[0]['href'];

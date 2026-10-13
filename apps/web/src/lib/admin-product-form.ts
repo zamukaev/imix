@@ -1,6 +1,8 @@
 import type {
+  AdminColorDto,
   AdminProductDto,
   AdminVariantDto,
+  ColorWriteRequest,
   CreateProductRequest,
   ProductWriteRequest,
   VariantWriteRequest,
@@ -25,7 +27,8 @@ export type VariantDraft = {
   sku: string;
   labelRu: string;
   labelEn: string;
-  color: string;
+  /** A colour's slug, or empty for a product sold in one finish. */
+  colorSlug: string;
   config: string;
   /** Major units as typed — roubles, not kopecks. */
   priceRub: string;
@@ -33,6 +36,26 @@ export type VariantDraft = {
   stock: string;
   /** Ordered at least once, so it may be edited but not deleted. */
   sold?: boolean;
+};
+
+/**
+ * One finish being edited.
+ *
+ * The slug is the identity a variant points at, so it is shown and editable but
+ * changing it on a colour that is in use would orphan those variants — the form
+ * locks it once `inUse` is set.
+ */
+export type ColorDraft = {
+  /** Absent until the colour exists in the database. */
+  id?: string;
+  slug: string;
+  nameRu: string;
+  nameEn: string;
+  /** `#rrggbb`. */
+  hex: string;
+  images: string[];
+  /** True while a variant names it — it may be edited but not removed. */
+  inUse?: boolean;
 };
 
 export type ProductDraft = {
@@ -52,10 +75,13 @@ export type ProductDraft = {
   navImageUrl: string;
   model3dUrl: string;
   featured: boolean;
+  colors: ColorDraft[];
 };
 
+export type ColorField = keyof Omit<ColorDraft, 'id' | 'images' | 'inUse'>;
+
 export type VariantField = keyof Omit<VariantDraft, 'id' | 'sold'>;
-export type ProductField = keyof Omit<ProductDraft, 'images' | 'featured'>;
+export type ProductField = keyof Omit<ProductDraft, 'images' | 'featured' | 'colors'>;
 
 export type DraftResult<TValue, TField extends string> =
   | { ok: true; value: TValue }
@@ -65,7 +91,7 @@ export type DraftResult<TValue, TField extends string> =
  * What is wrong with a field, as a code rather than a sentence: the messages are
  * translated and this module has no locale.
  */
-export type DraftProblem = 'required' | 'amount';
+export type DraftProblem = 'required' | 'amount' | 'hex';
 
 /** iMIX resells one manufacturer today; pre-filling it saves typing it every time. */
 const DEFAULT_BRAND = 'Apple';
@@ -75,7 +101,7 @@ export function emptyVariantDraft(): VariantDraft {
     sku: '',
     labelRu: '',
     labelEn: '',
-    color: '',
+    colorSlug: '',
     config: '',
     priceRub: '',
     priceUsd: '',
@@ -83,13 +109,22 @@ export function emptyVariantDraft(): VariantDraft {
   };
 }
 
-export function variantDraftFrom(variant: AdminVariantDto): VariantDraft {
+/**
+ * `colorSlug` rather than the id the API returns: the form edits colours and
+ * variants together, and a variant created in the same submit points at a colour
+ * that has no id yet. The slug is stable across that, so it is what both the
+ * draft and the request speak.
+ */
+export function variantDraftFrom(
+  variant: AdminVariantDto,
+  colors: readonly AdminColorDto[] = [],
+): VariantDraft {
   return {
     id: variant.id,
     sku: variant.sku,
     labelRu: variant.labelRu,
     labelEn: variant.labelEn,
-    color: variant.color ?? '',
+    colorSlug: colors.find((color) => color.id === variant.colorId)?.slug ?? '',
     config: variant.config ?? '',
     priceRub: formatMoneyInput(variant.priceRub),
     priceUsd: formatMoneyInput(variant.priceUsd),
@@ -114,6 +149,7 @@ export function emptyProductDraft(categoryId: string): ProductDraft {
     navImageUrl: '',
     model3dUrl: '',
     featured: false,
+    colors: [],
   };
 }
 
@@ -133,6 +169,23 @@ export function productDraftFrom(product: AdminProductDto): ProductDraft {
     navImageUrl: product.navImageUrl ?? '',
     model3dUrl: product.model3dUrl ?? '',
     featured: product.featured,
+    colors: product.colors.map(colorDraftFrom),
+  };
+}
+
+export function emptyColorDraft(): ColorDraft {
+  return { slug: '', nameRu: '', nameEn: '', hex: '#000000', images: [] };
+}
+
+export function colorDraftFrom(color: AdminColorDto): ColorDraft {
+  return {
+    id: color.id,
+    slug: color.slug,
+    nameRu: color.nameRu,
+    nameEn: color.nameEn,
+    hex: color.hex,
+    images: color.images,
+    inUse: color.inUse,
   };
 }
 
@@ -173,7 +226,7 @@ export function toVariantRequest(
       sku: draft.sku.trim().toUpperCase(),
       labelRu: draft.labelRu.trim(),
       labelEn: draft.labelEn.trim(),
-      color: blankToNull(draft.color),
+      colorSlug: blankToNull(draft.colorSlug),
       config: blankToNull(draft.config),
       priceRub,
       priceUsd,
@@ -222,7 +275,55 @@ export function toProductRequest(
       navImageUrl: blankToNull(draft.navImageUrl),
       model3dUrl: blankToNull(draft.model3dUrl),
       featured: draft.featured,
+      colors: draft.colors.map(toColorRequest),
     },
+  };
+}
+
+/** `#rrggbb`, the one spelling the API accepts. */
+const HEX_PATTERN = /^#[0-9a-fA-F]{6}$/;
+
+/**
+ * Validates the colours as a set, so the form can point at the offending row.
+ *
+ * Returned per index for the same reason variant problems are: "a colour is
+ * wrong" is not something an admin with six of them can act on.
+ */
+export function colorProblems(
+  colors: readonly ColorDraft[],
+): Map<number, Partial<Record<ColorField, DraftProblem>>> {
+  const problems = new Map<number, Partial<Record<ColorField, DraftProblem>>>();
+
+  for (const [index, color] of colors.entries()) {
+    const fields: Partial<Record<ColorField, DraftProblem>> = {};
+
+    for (const field of ['slug', 'nameRu', 'nameEn'] as const) {
+      if (color[field].trim().length === 0) {
+        fields[field] = 'required';
+      }
+    }
+
+    if (!HEX_PATTERN.test(color.hex.trim())) {
+      fields.hex = 'hex';
+    }
+
+    if (hasAny(fields)) {
+      problems.set(index, fields);
+    }
+  }
+
+  return problems;
+}
+
+function toColorRequest(draft: ColorDraft): ColorWriteRequest {
+  return {
+    slug: draft.slug.trim().toLowerCase(),
+    nameRu: draft.nameRu.trim(),
+    nameEn: draft.nameEn.trim(),
+    // Lowercased to match the API, which stores one spelling so two rows for one
+    // colour cannot differ by nothing a reader can see.
+    hex: draft.hex.trim().toLowerCase(),
+    images: draft.images,
   };
 }
 

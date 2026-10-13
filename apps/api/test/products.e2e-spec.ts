@@ -271,9 +271,22 @@ describe('products endpoints', () => {
         navImage: expect.any(String),
         featured: true,
         group: null,
-        model3dUrl: null,
+        // The seed points this at a generic placeholder `.glb`; the assertion is
+        // that the column travels, not which file is behind it.
+        model3dUrl: expect.any(String),
         category: { slug: 'iphone', name: 'iPhone' },
+        colors: expect.any(Array),
         variants: expect.any(Array),
+      });
+
+      // The swatch row's data: a colour carries its own name, hex and photos.
+      expect(response.body.colors.length).toBeGreaterThan(0);
+      expect(response.body.colors[0]).toEqual({
+        id: expect.any(String),
+        slug: expect.any(String),
+        name: expect.any(String),
+        hex: expect.stringMatching(/^#[0-9a-f]{6}$/),
+        images: expect.any(Array),
       });
 
       expect(response.body.variants.length).toBeGreaterThan(0);
@@ -281,7 +294,7 @@ describe('products endpoints', () => {
         id: expect.any(String),
         sku: expect.any(String),
         label: expect.any(String),
-        color: expect.any(String),
+        colorId: expect.any(String),
         config: expect.any(String),
         price: expect.any(Number),
         stock: expect.any(Number),

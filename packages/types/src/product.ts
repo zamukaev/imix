@@ -22,10 +22,33 @@ export type ProductVariantDto = {
   sku: string;
   /** Human-readable summary, e.g. "256 ГБ · Графит". */
   label: string;
-  color: string | null;
+  /**
+   * Which finish this variant is, as an id into the enclosing product's
+   * `colors`. Null for a product sold in a single colour.
+   */
+  colorId: string | null;
   config: string | null;
   price: Money;
   stock: number;
+};
+
+/**
+ * One finish a product is sold in.
+ *
+ * The images belong to the colour rather than the product because choosing a
+ * finish is meant to show it: a shopper picking "Lavender" expects the lavender
+ * device. `images` may be empty, and the gallery then falls back to the
+ * product's own — a colour without photographs is a swatch, not a broken page.
+ */
+export type ProductColorDto = {
+  id: string;
+  /** Locale-independent handle — "lavender". Stable across a name correction. */
+  slug: string;
+  /** Already resolved to the requested locale. */
+  name: string;
+  /** `#rrggbb`. The swatch is painted with this, so it is data, not a token. */
+  hex: string;
+  images: string[];
 };
 
 /** The category a product belongs to, embedded in product responses. */
@@ -82,6 +105,8 @@ export type ProductDetailDto = ProductListItemDto & {
   description: string;
   /** `.glb` model for the Phase 5 viewer; null until one is uploaded. */
   model3dUrl: string | null;
+  /** In display order. Empty for a product sold in a single finish. */
+  colors: ProductColorDto[];
   variants: ProductVariantDto[];
 };
 

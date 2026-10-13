@@ -2,7 +2,9 @@ import type { Metadata, Route } from 'next';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import type { Locale } from '@imix/types';
-import { ProductGallery } from '@/components/product-gallery';
+import { ProductColorPicker } from '@/components/product-color-picker';
+import { ProductColorProvider } from '@/components/product-color-context';
+import { ProductMedia } from '@/components/product-media';
 import { ProductPurchasePanel } from '@/components/product-purchase-panel';
 import { Link, getPathname } from '@/i18n/navigation';
 import { getProductOrNull } from '@/lib/api';
@@ -67,27 +69,41 @@ export default async function ProductPage({ params }: ProductPageProps) {
         <span aria-current="page">{product.name}</span>
       </nav>
 
-      <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
-        <ProductGallery images={product.images} productName={product.name} />
-
-        <div className="space-y-8 lg:pt-4">
-          <header className="space-y-2">
-            <p className="text-ink-muted text-xs tracking-widest uppercase">{product.brand}</p>
-            <h1 className="text-4xl font-semibold tracking-tight text-balance">{product.name}</h1>
-          </header>
-
-          <p className="text-ink-muted max-w-prose leading-relaxed">{product.description}</p>
-
-          <ProductPurchasePanel
-            productSlug={product.slug}
+      {/*
+        The chosen finish drives both columns — the gallery on the left and the
+        configuration list on the right — so it is held above them. The provider
+        is a Client Component taking `children`, which keeps the heading and the
+        description server-rendered inside it.
+      */}
+      <ProductColorProvider colors={product.colors} variants={product.variants}>
+        <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
+          <ProductMedia
+            images={product.images}
+            model3dUrl={product.model3dUrl}
             productName={product.name}
-            brand={product.brand}
-            currency={product.currency}
-            image={product.images[0] ?? null}
-            variants={product.variants}
           />
+
+          <div className="space-y-8 lg:pt-4">
+            <header className="space-y-2">
+              <p className="text-ink-muted text-xs tracking-widest uppercase">{product.brand}</p>
+              <h1 className="text-4xl font-semibold tracking-tight text-balance">{product.name}</h1>
+            </header>
+
+            <p className="text-ink-muted max-w-prose leading-relaxed">{product.description}</p>
+
+            <ProductColorPicker />
+
+            <ProductPurchasePanel
+              productSlug={product.slug}
+              productName={product.name}
+              brand={product.brand}
+              currency={product.currency}
+              image={product.images[0] ?? null}
+              variants={product.variants}
+            />
+          </div>
         </div>
-      </div>
+      </ProductColorProvider>
     </main>
   );
 }

@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { siteUrl } from '@/lib/seo';
+import { isPreviewDeployment, siteUrl } from '@/lib/seo';
 
 /**
  * What a crawler may walk.
@@ -24,6 +24,16 @@ const PRIVATE_PATHS = [
 ];
 
 export default function robots(): MetadataRoute.Robots {
+  /**
+   * A preview deployment is the whole shop on a hostname nobody should find in
+   * a search result — duplicate catalogue, staging prices, half-finished copy.
+   * Now that its canonicals point at itself rather than at production, nothing
+   * else keeps it out of an index.
+   */
+  if (isPreviewDeployment) {
+    return { rules: [{ userAgent: '*', disallow: '/' }] };
+  }
+
   const disallow = PRIVATE_PATHS.flatMap((path) => [path, `/en${path}`]);
 
   return {

@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { FIELD_CLASS, Field } from '@/components/ui/form-field';
 import type {
+  ColorDraft,
   DraftProblem,
   VariantDraft,
   VariantField,
@@ -16,6 +17,8 @@ type VariantFieldsProps = {
   disabled: boolean;
   /** Prefixed so the ids stay unique across a page holding several rows. */
   idPrefix: string;
+  /** The product's finishes — what this variant may be one of. */
+  colors: readonly ColorDraft[];
   onChange: (patch: Partial<VariantDraft>) => void;
 };
 
@@ -31,6 +34,7 @@ export function VariantFields({
   errors,
   disabled,
   idPrefix,
+  colors,
   onChange,
 }: VariantFieldsProps) {
   const t = useTranslations('admin');
@@ -43,11 +47,13 @@ export function VariantFields({
       return undefined;
     }
 
-    return problem === 'required' ? tValidation('required') : tValidation('amount');
+    if (problem === 'required') return tValidation('required');
+
+    return problem === 'hex' ? tValidation('hex') : tValidation('amount');
   };
 
   const text = (
-    field: 'sku' | 'labelRu' | 'labelEn' | 'color' | 'config',
+    field: 'sku' | 'labelRu' | 'labelEn' | 'config',
     label: string,
     hint?: string,
   ) => (
@@ -99,7 +105,34 @@ export function VariantFields({
       {text('labelRu', t('labelRu'))}
       {text('labelEn', t('labelEn'))}
       {amount('stock', t('stock'))}
-      {text('color', t('color'), t('optional'))}
+      {/*
+        A select over the product's own colours, not free text. The old field let
+        an admin type "Midnigt" and get a finish that matched no swatch; the list
+        can only offer what the colours section above actually defines.
+      */}
+      <Field
+        name={`${idPrefix}-colorSlug`}
+        label={t('color')}
+        hint={colors.length === 0 ? t('colorNoneDefined') : t('optional')}
+        error={message('colorSlug')}
+      >
+        {(props) => (
+          <select
+            {...props}
+            disabled={disabled || colors.length === 0}
+            value={draft.colorSlug}
+            onChange={(event) => onChange({ colorSlug: event.target.value })}
+            className={FIELD_CLASS}
+          >
+            <option value="">{t('colorNone')}</option>
+            {colors.map((color) => (
+              <option key={color.slug} value={color.slug}>
+                {color.nameRu || color.slug}
+              </option>
+            ))}
+          </select>
+        )}
+      </Field>
       {text('config', t('config'), t('optional'))}
       {amount('priceRub', t('priceRub'), t('priceHintRub'))}
       {amount('priceUsd', t('priceUsd'), t('priceHintUsd'))}

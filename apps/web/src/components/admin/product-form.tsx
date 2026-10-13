@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { AdminCategoryDto, AdminProductDto } from '@imix/types';
+import { ColorFields, type ColorFieldErrors } from '@/components/admin/color-fields';
 import { ImageUploader } from '@/components/admin/image-uploader';
 import {
   VariantFields,
@@ -20,6 +21,8 @@ import {
   updateAdminVariant,
 } from '@/lib/admin-api';
 import {
+  colorProblems,
+  emptyColorDraft,
   emptyProductDraft,
   emptyVariantDraft,
   productDraftFrom,
@@ -27,6 +30,7 @@ import {
   toProductRequest,
   toVariantRequest,
   variantDraftFrom,
+  type ColorDraft,
   type DraftProblem,
   type ProductDraft,
   type ProductField,
@@ -69,7 +73,9 @@ export function ProductForm({ categories, product }: ProductFormProps) {
       : emptyProductDraft(categories[0]?.id ?? ''),
   );
   const [variants, setVariants] = useState<VariantDraft[]>(() =>
-    product ? product.variants.map(variantDraftFrom) : [emptyVariantDraft()],
+    product
+      ? product.variants.map((variant) => variantDraftFrom(variant, product.colors))
+      : [emptyVariantDraft()],
   );
 
   // Tabs belong to one category, so the picker follows the category select.
@@ -79,6 +85,7 @@ export function ProductForm({ categories, product }: ProductFormProps) {
   const [variantErrors, setVariantErrors] = useState<Record<number, VariantFieldErrors>>(
     {},
   );
+  const [colorErrors, setColorErrors] = useState<Record<number, ColorFieldErrors>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -91,6 +98,14 @@ export function ProductForm({ categories, product }: ProductFormProps) {
     setNotice(null);
   };
 
+  const patchColor = (index: number, patch: Partial<ColorDraft>) => {
+    patchDraft({
+      colors: draft.colors.map((color, at) =>
+        at === index ? { ...color, ...patch } : color,
+      ),
+    });
+  };
+
   const patchVariant = (index: number, patch: Partial<VariantDraft>) => {
     setVariants((current) =>
       current.map((variant, at) => (at === index ? { ...variant, ...patch } : variant)),
@@ -101,9 +116,10 @@ export function ProductForm({ categories, product }: ProductFormProps) {
   /** Restates the whole form from an answer, so derived prices are never stale. */
   const adopt = (updated: AdminProductDto, message: string) => {
     setDraft(productDraftFrom(updated));
-    setVariants(updated.variants.map(variantDraftFrom));
+    setVariants(updated.variants.map((variant) => variantDraftFrom(variant, updated.colors)));
     setProductErrors({});
     setVariantErrors({});
+    setColorErrors({});
     setFormError(null);
     setNotice(message);
   };
@@ -123,6 +139,19 @@ export function ProductForm({ categories, product }: ProductFormProps) {
 
   const submit = () =>
     run(async () => {
+      // Checked before the product itself, because a colour is what a variant
+      // points at: submitting a half-typed swatch would either fail at the API
+      // or, worse, save a finish nobody can name.
+      const badColors = colorProblems(draft.colors);
+
+      if (badColors.size > 0) {
+        setColorErrors(Object.fromEntries(badColors));
+
+        return;
+      }
+
+      setColorErrors({});
+
       if (isEditing) {
         const parsed = toProductRequest(draft);
 
@@ -355,6 +384,45 @@ export function ProductForm({ categories, product }: ProductFormProps) {
       </section>
 
       <section>
+        <h2 className={LEGEND_CLASS}>{t('colorsLegend')}</h2>
+        <p className="text-ink-muted mb-4 text-sm">{t('colorsNote')}</p>
+
+        {draft.colors.length > 0 ? (
+          <ul className="space-y-4">
+            {draft.colors.map((color, index) => (
+              <li key={color.id ?? `new-${index}`}>
+                <ColorFields
+                  draft={color}
+                  errors={colorErrors[index] ?? {}}
+                  disabled={pending}
+                  idPrefix={`color-${index}`}
+                  onChange={(patch) => patchColor(index, patch)}
+                  onRemove={() =>
+                    patchDraft({
+                      colors: draft.colors.filter((_, at) => at !== index),
+                    })
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-ink-muted text-sm">{t('noColors')}</p>
+        )}
+
+        <div className="mt-4">
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={pending}
+            onClick={() => patchDraft({ colors: [...draft.colors, emptyColorDraft()] })}
+          >
+            {t('addColor')}
+          </Button>
+        </div>
+      </section>
+
+      <section>
         <h2 className={LEGEND_CLASS}>{t('variantsLegend')}</h2>
         <p className="text-ink-muted mb-4 text-sm">{t('variantsNote')}</p>
 
@@ -369,6 +437,7 @@ export function ProductForm({ categories, product }: ProductFormProps) {
                 errors={variantErrors[index] ?? {}}
                 disabled={pending}
                 idPrefix={variant.id ?? `new-${index}`}
+                colors={draft.colors}
                 onChange={(patch) => patchVariant(index, patch)}
               />
 

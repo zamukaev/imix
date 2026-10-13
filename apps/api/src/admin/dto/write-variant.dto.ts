@@ -10,13 +10,17 @@ import {
   ValidateIf,
 } from 'class-validator';
 import type { VariantWriteRequest } from '@imix/types';
-import { MAX_NAME_LENGTH, trimmed } from './write-category.dto';
+import {
+  MAX_NAME_LENGTH,
+  MAX_SLUG_LENGTH,
+  SLUG_PATTERN,
+  trimmed,
+} from './write-category.dto';
 
 /** Uppercase, digits and hyphens — a SKU is read aloud and typed into a search. */
 const SKU_PATTERN = /^[A-Z0-9][A-Z0-9-]*$/;
 
 const MAX_SKU_LENGTH = 64;
-const MAX_COLOUR_LENGTH = 60;
 const MAX_CONFIG_LENGTH = 60;
 
 /**
@@ -57,11 +61,19 @@ export class WriteVariantDto implements VariantWriteRequest {
 
   // `ValidateIf` rather than `IsOptional`, so an explicit null is accepted as
   // "clear this" while a wrong type is still a 400.
+  //
+  // A colour's slug rather than its id: the request that creates a product's
+  // colours is the same one that creates its variants, so no id exists yet on
+  // the client. The service resolves it against the colours in the same body and
+  // rejects one that names a colour the product does not have.
   @Transform(emptyToNull)
   @ValidateIf((_object, value) => value !== null && value !== undefined)
   @IsString()
-  @Length(1, MAX_COLOUR_LENGTH)
-  color?: string | null;
+  @Length(1, MAX_SLUG_LENGTH)
+  @Matches(SLUG_PATTERN, {
+    message: 'colorSlug must be lowercase words joined by single hyphens',
+  })
+  colorSlug?: string | null;
 
   @Transform(emptyToNull)
   @ValidateIf((_object, value) => value !== null && value !== undefined)
@@ -121,8 +133,11 @@ export class PatchVariantDto implements Partial<VariantWriteRequest> {
   @Transform(emptyToNull)
   @ValidateIf((_object, value) => value !== null && value !== undefined)
   @IsString()
-  @Length(1, MAX_COLOUR_LENGTH)
-  color?: string | null;
+  @Length(1, MAX_SLUG_LENGTH)
+  @Matches(SLUG_PATTERN, {
+    message: 'colorSlug must be lowercase words joined by single hyphens',
+  })
+  colorSlug?: string | null;
 
   @Transform(emptyToNull)
   @ValidateIf((_object, value) => value !== null && value !== undefined)
