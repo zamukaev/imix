@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useMoney } from '@/components/currency-provider';
 import { cartSubtotal, type CartLine } from '@/lib/cart';
+import { isServedAsStored } from '@/lib/image-source';
 
 type CheckoutSummaryProps = {
   lines: readonly CartLine[];
@@ -33,6 +34,7 @@ export function CheckoutSummary({ lines }: CheckoutSummaryProps) {
               {line.image ? (
                 <Image
                   src={line.image}
+                  unoptimized={isServedAsStored(line.image)}
                   alt=""
                   width={96}
                   height={96}

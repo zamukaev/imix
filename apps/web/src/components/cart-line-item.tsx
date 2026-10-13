@@ -7,6 +7,7 @@ import { useMoney } from '@/components/currency-provider';
 import { Link } from '@/i18n/navigation';
 import { lineLimit, type CartLine } from '@/lib/cart';
 import { useCartStore } from '@/stores/cart-store';
+import { isServedAsStored } from '@/lib/image-source';
 
 type CartLineItemProps = {
   line: CartLine;
@@ -28,6 +29,7 @@ export function CartLineItem({ line }: CartLineItemProps) {
         {line.image ? (
           <Image
             src={line.image}
+            unoptimized={isServedAsStored(line.image)}
             alt=""
             width={192}
             height={192}

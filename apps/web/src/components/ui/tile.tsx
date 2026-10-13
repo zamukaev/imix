@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import Image from 'next/image';
+import { isServedAsStored } from '@/lib/image-source';
 
 /**
  * The marketing surface, as described in ARCHITECTURE.md §5.1.
@@ -135,6 +136,7 @@ export function Tile({
           <div className="absolute inset-x-0 bottom-0 h-tile-art-sm sm:inset-0 sm:h-auto">
             <Image
               src={media.src}
+              unoptimized={isServedAsStored(media.src)}
               alt={media.alt}
               fill
               sizes="(min-width: 640px) 100vw, 1700px"
