@@ -15,8 +15,11 @@ import Image from 'next/image';
 
 export type TileSurface = 'light' | 'white' | 'dark';
 
-/** Sets the `--surface-*` contract that `Button` and muted text read from. */
-const SURFACES: Record<TileSurface, string> = {
+/**
+ * Sets the `--surface-*` contract that `Button` and muted text read from.
+ * Exported for the admin preview, which has to paint the same ground.
+ */
+export const TILE_SURFACE_CLASS: Record<TileSurface, string> = {
   light: 'bg-surface-alt',
   white: 'bg-surface',
   dark: 'surface-dark bg-surface-dark',
@@ -94,7 +97,7 @@ export function Tile({
     <section
       className={[
         'relative flex flex-col items-center overflow-hidden text-center',
-        SURFACES[surface],
+        TILE_SURFACE_CLASS[surface],
         scale.section,
       ].join(' ')}
     >
