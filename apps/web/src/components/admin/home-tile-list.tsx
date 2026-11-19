@@ -8,6 +8,7 @@ import type { AdminHomeTileDto, TileMoveDirection } from '@imix/types';
 import { Link, useRouter } from '@/i18n/navigation';
 import { deleteAdminHomeTile, moveAdminHomeTile } from '@/lib/admin-api';
 import { toUserMessage } from '@/lib/api';
+import { isServedAsStored } from '@/lib/image-source';
 
 /**
  * The shop window, in the order it is rendered.
@@ -88,6 +89,7 @@ export function HomeTileList({ tiles }: { tiles: AdminHomeTileDto[] }) {
 
             <Image
               src={tile.imageUrl}
+              unoptimized={isServedAsStored(tile.imageUrl)}
               alt=""
               width={224}
               height={128}

@@ -424,6 +424,13 @@ docker compose -f docker-compose.production.yml exec -T db \
 in the API. nginx serves it read-only at `/uploads/` on the apex domain, so the
 relative paths stored in the database resolve without Next being involved.
 
+That holds only because every `next/image` rendering a stored URL passes
+`unoptimized={isServedAsStored(src)}` (`apps/web/src/lib/image-source.ts`). The
+storefront container does not mount the volume, so the image optimiser cannot
+see the file and answers `/_next/image?url=/uploads/…` with a 400; skipping it
+sends the browser to nginx instead. A new `<Image>` that shows uploaded files
+needs the same prop.
+
 Moving to Cloudinary later is one variable — set `CLOUDINARY_URL` in `.env` and
 restart the backend. **Do not delete the volume afterwards:** paths already in
 the database still point at it.

@@ -98,6 +98,28 @@
   --spacing-tile: max(88svh, 48rem);
   --spacing-tile-half: max(62svh, 42rem);
   /*
+   * The artwork band on a phone, where the tile is too narrow for `object-cover`
+   * over the whole tile: the banners are 2.2:1 to 4.3:1, so covering a 375×770
+   * tile shows ~11 % of their width and cuts the device.
+   *
+   * `art` is the height the artwork is *rendered* at. At 24rem the widest hero
+   * is ~1670px wide and its device group — ~20 % of the frame — ~340px, inside
+   * a 375px screen.
+   *
+   * `media` is the part of it that is *shown*, anchored to the bottom. Every
+   * banner keeps 37–45 % of its height empty above the device for the desktop
+   * copy; on a phone the copy sits above the band instead, so that headroom only
+   * reads as a hole between the buttons and the device. 16rem of 24rem trims the
+   * top third — inside the smallest headroom measured.
+   *
+   * `media-gap` is the air between the actions and the band — the one gap that
+   * sets the rhythm, since the band now follows the copy rather than the foot
+   * of a fixed-height tile.
+   */
+  --spacing-tile-art-sm: 24rem;
+  --spacing-tile-media-sm: 16rem;
+  --spacing-tile-media-gap-sm: 2.5rem;
+  /*
    * One model card in the category carousel. Fixed rather than fractional, so
    * the next card is cut off by the viewport edge at every width — that sliver
    * is what says the row scrolls.

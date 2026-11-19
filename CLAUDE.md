@@ -102,7 +102,8 @@ pnpm install            # install all workspaces
 pnpm dev                # run web + api together (turbo)
 pnpm --filter web dev   # run only the storefront
 pnpm --filter api dev   # run only the API
-pnpm --filter api prisma migrate dev   # DB migration
+pnpm --filter api db:migrate   # DB migration (prisma migrate dev)
+pnpm --filter api db:reset     # drop, re-migrate and reseed the local DB
 pnpm typecheck          # tsc across workspaces
 pnpm lint               # eslint across workspaces
 pnpm build              # production build

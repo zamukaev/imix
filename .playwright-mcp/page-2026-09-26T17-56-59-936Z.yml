@@ -1,0 +1,10 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e5]:
+    - heading "iPhone 17 Pro" [level=2] [ref=f2e6]
+    - paragraph [ref=f2e7]: Ein Satz Subhead, der Ã¼ber zwei Zeilen gehen kann.
+    - generic [ref=f2e8]: Kaufen
+    - generic [ref=f2e9]: Mehr
+  - generic [ref=f2e14]:
+    - heading "MacBook Pro" [level=2] [ref=f2e15]
+    - paragraph [ref=f2e16]: Subhead
+    - generic [ref=f2e17]: Kaufen

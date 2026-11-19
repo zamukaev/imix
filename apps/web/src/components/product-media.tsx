@@ -12,6 +12,7 @@ import {
   shouldShowModeSwitcher,
   type ProductMediaMode,
 } from '@/lib/product-media';
+import { isServedAsStored } from '@/lib/image-source';
 
 /**
  * Everything the detail page shows of the product itself: the photo gallery, and
@@ -123,6 +124,7 @@ export function ProductMedia({
   const poster = plan.posterImage ? (
     <Image
       src={plan.posterImage}
+      unoptimized={isServedAsStored(plan.posterImage)}
       alt=""
       width={800}
       height={800}

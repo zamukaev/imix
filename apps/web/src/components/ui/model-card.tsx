@@ -5,6 +5,7 @@ import type { ProductListItemDto } from '@imix/types';
 import { ButtonLink } from '@/components/ui/button';
 import { Link } from '@/i18n/navigation';
 import { formatMoney } from '@/lib/format';
+import { isServedAsStored } from '@/lib/image-source';
 
 /**
  * One model on a category page — the landing page's unit, as `Tile` is the home
@@ -47,6 +48,7 @@ export async function ModelCard({ product, priority = false }: ModelCardProps) {
             // there is no breakpoint at which the card grows.
             <Image
               src={image}
+              unoptimized={isServedAsStored(image)}
               alt=""
               width={800}
               height={800}

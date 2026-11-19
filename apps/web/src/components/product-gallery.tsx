@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
+import { isServedAsStored } from '@/lib/image-source';
 
 type ProductGalleryProps = {
   images: string[];
@@ -49,6 +50,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
         <Image
           key={active}
           src={active}
+          unoptimized={isServedAsStored(active)}
           alt={t('galleryAlt', {
             product: productName,
             index: index + 1,

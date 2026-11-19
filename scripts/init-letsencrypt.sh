@@ -32,6 +32,16 @@ set +a
 
 compose() { docker compose -f "$COMPOSE_FILE" "$@"; }
 
+# `.env` was sourced with `set -a` above, so NGINX_STAGE is exported into this
+# shell — and Compose reads the environment *before* the file. Rewriting the
+# file alone is therefore not enough: the stale exported value wins and nginx
+# comes back on the stage it already had, which is how a certificate gets
+# issued and then never served. Write both, and keep them in step.
+set_stage() {
+  sed -i "s/^NGINX_STAGE=.*/NGINX_STAGE=$1/" .env
+  export NGINX_STAGE="$1"
+}
+
 # --- 1. check DNS before asking Let's Encrypt anything ----------------------
 #
 # Five failed validations against the same name in an hour and that name is rate
@@ -57,7 +67,7 @@ done
 # --- 2. serve the challenge -------------------------------------------------
 echo
 echo "Bringing nginx up on plain HTTP…"
-sed -i 's/^NGINX_STAGE=.*/NGINX_STAGE=bootstrap/' .env
+set_stage bootstrap
 compose up -d nginx
 sleep 3
 
@@ -89,15 +99,15 @@ compose run --rm --entrypoint certbot certbot \
 # --- 4. switch to HTTPS -----------------------------------------------------
 echo
 echo "Switching nginx to the TLS config…"
-sed -i 's/^NGINX_STAGE=.*/NGINX_STAGE=tls/' .env
+set_stage tls
 compose up -d --force-recreate nginx
 sleep 3
 
 echo
 echo "Verifying…"
-curl -fsS -o /dev/null -w '  https://%{host} → %{http_code}\n' "https://$DOMAIN/" || true
-curl -fsS -o /dev/null -w '  https://%{host} → %{http_code}\n' "https://$API_DOMAIN/health" || true
-curl -fsS -o /dev/null -w '  http://%{host} → %{http_code} (expect 301)\n' "http://$DOMAIN/" || true
+curl -fsS -o /dev/null -w '  %{url_effective} → %{http_code}\n' "https://$DOMAIN/" || true
+curl -fsS -o /dev/null -w '  %{url_effective} → %{http_code}\n' "https://$API_DOMAIN/health" || true
+curl -fsS -o /dev/null -w '  %{url_effective} → %{http_code} (expect 301)\n' "http://$DOMAIN/" || true
 
 echo
 echo "Done. Renewal runs twice a day in the certbot container; confirm it with:"

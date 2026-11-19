@@ -40,3 +40,6 @@ coverage/
 
 # Uploads written by the local asset storage in development.
 apps/web/public/uploads/
+
+# Screenshots and page snapshots from Playwright MCP browser checks.
+.playwright-mcp/
