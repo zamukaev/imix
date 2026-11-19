@@ -3,15 +3,14 @@ import { getTranslations } from 'next-intl/server';
 import type {
   HomeTileActions,
   HomeTileDto,
-  HomeTileSurface,
   Locale,
 } from '@imix/types';
 import { getPathname } from '@/i18n/navigation';
 import { ButtonLink } from '@/components/ui/button';
 import { Reveal } from '@/components/ui/reveal';
-import { Tile, TilePair, TileStack, type TileProps, type TileSurface } from '@/components/ui/tile';
+import { Tile, TilePair, TileStack, type TileProps } from '@/components/ui/tile';
 import { getHomeTiles } from '@/lib/api';
-import { toHomeRows } from '@/lib/home-tiles';
+import { TILE_SURFACE_OF, toHomeRows } from '@/lib/home-tiles';
 import { MAIN_CONTENT_ID } from '@/lib/main-content';
 import { alternatesFor } from '@/lib/seo';
 import { getRequestContext } from '@/lib/request-context';
@@ -93,12 +92,6 @@ export default async function HomePage() {
   );
 }
 
-const SURFACES: Record<HomeTileSurface, TileSurface> = {
-  LIGHT: 'light',
-  WHITE: 'white',
-  DARK: 'dark',
-};
-
 function toTileProps(
   tile: HomeTileDto,
   { first = false }: { first?: boolean } = {},
@@ -106,7 +99,7 @@ function toTileProps(
   return {
     headline: tile.headline,
     subhead: tile.subhead ?? undefined,
-    surface: SURFACES[tile.surface],
+    surface: TILE_SURFACE_OF[tile.surface],
     as: first ? 'h1' : 'h2',
     media: { src: tile.image.src, alt: tile.image.alt, priority: first },
     actions: toActions(tile.actions),

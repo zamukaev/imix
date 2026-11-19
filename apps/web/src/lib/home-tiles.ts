@@ -1,4 +1,5 @@
-import type { HomeTileDto } from '@imix/types';
+import type { HomeTileDto, HomeTileSurface } from '@imix/types';
+import type { TileSurface } from '@/components/ui/tile';
 
 /**
  * Turning the API's flat tile list into rows.
@@ -40,3 +41,10 @@ export function toHomeRows(tiles: readonly HomeTileDto[]): HomeRow[] {
 
   return rows;
 }
+
+/** The stored surface as the `Tile` primitive names it. */
+export const TILE_SURFACE_OF: Record<HomeTileSurface, TileSurface> = {
+  LIGHT: 'light',
+  WHITE: 'white',
+  DARK: 'dark',
+};

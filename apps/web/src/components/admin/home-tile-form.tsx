@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   HOME_TILE_SURFACES,
   HOME_TILE_WIDTHS,
   type AdminHomeTileDto,
+  type HomeTileSurface,
 } from '@imix/types';
+import { HomeTilePreview } from '@/components/admin/home-tile-preview';
 import { ImageUploader } from '@/components/admin/image-uploader';
 import { Button } from '@/components/ui/button';
 import { FIELD_CLASS, Field, LEGEND_CLASS } from '@/components/ui/form-field';
@@ -21,6 +23,15 @@ import {
   type HomeTileFieldErrors,
 } from '@/lib/admin-home-tile-form';
 import { toUserMessage } from '@/lib/api';
+
+/** Each option says what it does to the text — the colour that goes wrong. */
+const SURFACE_LABELS = {
+  LIGHT: 'surfaceLight',
+  WHITE: 'surfaceWhite',
+  DARK: 'surfaceDark',
+} as const satisfies Record<HomeTileSurface, string>;
+
+type LocalizedField = 'headline' | 'subhead' | 'primaryLabel' | 'secondaryLabel';
 
 type HomeTileFormProps = {
   /** Absent when creating. */
@@ -43,6 +54,7 @@ export function HomeTileForm({ tile }: HomeTileFormProps) {
   const tValidation = useTranslations('validation');
   const tErrors = useTranslations('errors');
   const router = useRouter();
+  const locale = useLocale();
 
   const [draft, setDraft] = useState<HomeTileDraft>(() =>
     tile ? homeTileDraftFrom(tile) : emptyHomeTileDraft(),
@@ -91,6 +103,9 @@ export function HomeTileForm({ tile }: HomeTileFormProps) {
   const message = (field: HomeTileField): string | undefined =>
     fields[field] === undefined ? undefined : tValidation('required');
 
+  const localized = (field: LocalizedField): string =>
+    draft[locale === 'en' ? (`${field}En` as const) : (`${field}Ru` as const)];
+
   const text = (field: HomeTileField, label: string, hint?: string) => (
     <Field name={field} label={label} hint={hint} error={message(field)}>
       {(props) => (
@@ -133,26 +148,6 @@ export function HomeTileForm({ tile }: HomeTileFormProps) {
                   {HOME_TILE_WIDTHS.map((value) => (
                     <option key={value} value={value}>
                       {t(value === 'FULL' ? 'widthFull' : 'widthHalf')}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </Field>
-
-            <Field name="surface" label={t('surface')} error={undefined}>
-              {(props) => (
-                <select
-                  {...props}
-                  disabled={pending}
-                  value={draft.surface}
-                  onChange={(event) =>
-                    patch({ surface: event.target.value as HomeTileDraft['surface'] })
-                  }
-                  className={FIELD_CLASS}
-                >
-                  {HOME_TILE_SURFACES.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
                     </option>
                   ))}
                 </select>
@@ -207,6 +202,41 @@ export function HomeTileForm({ tile }: HomeTileFormProps) {
           {text('secondaryLabelRu', t('secondaryLabelRu'))}
           {text('secondaryLabelEn', t('secondaryLabelEn'))}
           {text('secondaryHref', t('href'), t('hrefHint'))}
+        </div>
+      </section>
+
+      <section>
+        <h2 className={LEGEND_CLASS}>{t('previewLegend')}</h2>
+
+        <div className="grid gap-6 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+          <Field name="surface" label={t('surface')} hint={t('surfaceHint')} error={undefined}>
+            {(props) => (
+              <select
+                {...props}
+                disabled={pending}
+                value={draft.surface}
+                onChange={(event) =>
+                  patch({ surface: event.target.value as HomeTileDraft['surface'] })
+                }
+                className={FIELD_CLASS}
+              >
+                {HOME_TILE_SURFACES.map((value) => (
+                  <option key={value} value={value}>
+                    {t(SURFACE_LABELS[value])}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+
+          <HomeTilePreview
+            surface={draft.surface}
+            imageUrl={draft.imageUrl}
+            headline={localized('headline')}
+            subhead={localized('subhead')}
+            primaryLabel={localized('primaryLabel')}
+            secondaryLabel={localized('secondaryLabel')}
+          />
         </div>
       </section>
 
